@@ -1,80 +1,142 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick start"
+description: "Create your first PDF feed and generate a PDF from a Fluent Forms submission in under five minutes."
 ---
 
-## Get started in three steps
+This guide walks you through creating a PDF feed on a Fluent Form, submitting a test entry, and downloading the resulting PDF. By the end you will have a working PDF feed and know how to embed a download link in a confirmation message.
 
-Get your documentation site running locally and make your first customization.
+<Note>
+  Complete [installation](/installation) before starting this guide. Fluent Forms must be installed and Fluent PDF fonts must be downloaded.
+</Note>
 
-### Step 1: Set up your local environment
+## Create and test your first PDF feed
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+  <Step title="Open a form in Fluent Forms">
+    In your WordPress admin, go to **Fluent Forms** and open any existing form. If you don't have one yet, create a simple contact form with a few fields.
+  </Step>
 
-### Step 2: Deploy your changes
+  <Step title="Go to PDF Feeds">
+    Inside the form editor, click **Settings** in the top navigation, then select **PDF Feeds** from the settings menu.
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    You will see an empty feed list. Each form can have multiple feeds — for example, one for an internal record and another formatted as a receipt.
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Create a new feed">
+    Click **New Feed**. Fluent PDF will show you the available templates:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    - **General** — a flexible layout for any form entry, with configurable header, body, and footer sections.
+    - **Invoice** — a tabular payment receipt (only shown for forms with a payment field).
 
-### Step 3: Go live
+    Select **General** to continue.
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Configure the feed content">
+    The feed editor has two sections:
+
+    **Content** — controls what appears in the PDF body. The body field accepts HTML and Fluent Forms shortcodes. The default body pre-populates with `{all_data}` to output all form fields. You can also set a custom header and footer that appear on every page.
+
+    **Appearance** — overrides the global defaults (paper size, orientation, font, colors, watermark) for this specific feed.
+
+    For this first feed, leave the defaults in place and give the feed a name like `Submission Summary`.
+  </Step>
+
+  <Step title="Enable the download link and save">
+    Scroll to the **Allow Download** option and set it to **Yes**. This makes the feed available as a downloadable link for logged-in users.
+
+    Click **Save** to create the feed. After saving, a **Shortcode** field appears showing the feed-specific shortcode:
+
+    ```
+    {pdf.download_link.42}
+    ```
+
+    (The number is your actual feed ID.) Copy this shortcode — you will use it in the next step.
+  </Step>
+
+  <Step title="Add a download link to the confirmation message">
+    Go to the form's **Confirmation** settings and paste the shortcode into the confirmation message. For example:
+
+    ```
+    Thank you for your submission! Download your PDF here: {pdf.download_link.42}
+    ```
+
+    You can also use the generic shortcode `{pdf.download_link}` to link to the first feed on the form, without specifying a feed ID.
+
+    Save the confirmation settings.
+
+    <Tip>
+      The same shortcodes work in Fluent Forms notification emails, so you can send PDF links to both the submitter and your team.
+    </Tip>
+  </Step>
+
+  <Step title="Submit a test entry">
+    Preview the form and fill it out with test data. Submit the entry.
+
+    The confirmation message should appear with a rendered download link in place of the shortcode.
+  </Step>
+
+  <Step title="Download the PDF">
+    Click the download link. Fluent PDF will generate the PDF and stream it to your browser.
+
+    You can also download PDFs for any entry from the Fluent Forms submission viewer: open **Fluent Forms → Entries**, open a submission, and look for the **PDF Downloads** widget in the right sidebar.
+  </Step>
+</Steps>
+
+## Shortcode reference
+
+Two shortcode formats are available in confirmation messages, notification emails, and anywhere Fluent Forms parses shortcodes:
+
+| Shortcode | Description |
+|---|---|
+| `{pdf.download_link}` | Download link for the first PDF feed on the form |
+| `{pdf.download_link.{feedId}}` | Download link for a specific feed by its numeric ID |
+
+Replace `{feedId}` with the actual ID shown in the feed editor's **Shortcode** field.
+
+<Note>
+  Download links require the user to be logged in unless the feed uses the public download option. See [Shortcodes](/fluent-forms/shortcodes) for details on public vs. authenticated links.
+</Note>
+
+## Generate a PDF programmatically
+
+For developers who need to generate a PDF outside of Fluent Forms — from a custom plugin, theme, or admin page — Fluent PDF exposes a `do_action` hook that accepts an array of HTML strings:
+
+```php
+do_action('fluent_pdf_make', [
+    'header' => '<h1>Invoice #1234</h1>',
+    'footer' => '<p>Thank you for your business.</p>',
+    'body'   => '<p>Order summary goes here.</p>',
+]);
+```
+
+Call this action to stream a PDF directly to the browser. Use `die()` immediately after to prevent any further output:
+
+```php
+if (isset($_GET['download_my_pdf'])) {
+    do_action('fluent_pdf_make', [
+        'header' => '<h1>My Document</h1>',
+        'body'   => '<p>Content here.</p>',
+        'footer' => '<p>Page footer.</p>',
+    ]);
+    die();
+}
+```
+
+See [Generating PDFs programmatically](/developer/generating-pdfs-programmatically) for a full reference including how to pass appearance settings and custom filenames.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    Learn all the options available in the PDF feed editor.
+  </Card>
+  <Card title="Templates" icon="layout-template" href="/fluent-forms/templates">
+    Understand the General and Invoice templates and how to build custom ones.
+  </Card>
+  <Card title="Email attachments" icon="envelope" href="/fluent-forms/email-attachments">
+    Attach PDFs to form notification emails automatically.
+  </Card>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Set default paper size, fonts, and colors for all feeds.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

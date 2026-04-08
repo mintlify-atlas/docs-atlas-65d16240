@@ -1,0 +1,83 @@
+---
+title: "Installation"
+description: "Install and configure Fluent PDF on your WordPress site."
+---
+
+<Note>
+  Fluent PDF requires the **Fluent Forms** plugin to be installed and activated before you begin. The PDF feeds, settings, and admin UI all live inside the Fluent Forms interface.
+</Note>
+
+## Install the plugin
+
+<Steps>
+  <Step title="Download the plugin">
+    Download the latest `fluent-pdf.zip` release from the [Fluent PDF GitHub releases page](https://github.com/WPManageNinja/fluent-pdf/releases).
+  </Step>
+
+  <Step title="Upload and activate in WordPress">
+    1. In your WordPress admin, go to **Plugins → Add New Plugin**.
+    2. Click **Upload Plugin** and select the `fluent-pdf.zip` file you downloaded.
+    3. Click **Install Now**, then **Activate Plugin**.
+
+    Fluent PDF will create the required directory structure (working directory, temp directory, PDF cache, and font directory) automatically on activation.
+  </Step>
+
+  <Step title="Navigate to the Fluent PDF add-on page">
+    In the WordPress admin, go to **Fluent Forms → Add-Ons**. You will see a **Fluent PDF** entry in the list. Click it to open the global settings and font management page.
+
+    <Info>
+      If you see a notice saying "Fluent PDF requires fonts to be downloaded", that is expected — fonts are not bundled with the plugin and must be downloaded separately in the next step.
+    </Info>
+  </Step>
+
+  <Step title="Download fonts">
+    On the Fluent PDF add-on page, click the **Download Fonts** button. Fluent PDF will fetch the required font files from the internet and store them in your WordPress uploads directory.
+
+    Font files are required for PDF rendering. Without them, PDF generation will fail.
+  </Step>
+
+  <Step title="Save global settings">
+    After fonts finish downloading, the global settings form becomes available. Review the defaults (A4 paper, portrait orientation, 14pt body font) and adjust them to match your preferences. Click **Save Settings** when done.
+
+    These settings apply to all PDF feeds unless overridden at the feed level. See [Global settings](/configuration/global-settings) for a full reference.
+  </Step>
+</Steps>
+
+## PHP extension requirements
+
+Fluent PDF uses PHP's PDF rendering libraries, which depend on the following extensions:
+
+| Extension | Purpose |
+|---|---|
+| `mbstring` | Multi-byte string handling for international text |
+| `mbstring` (regex) | MB Regex for text parsing |
+| `gd` | Image processing for logos and watermarks |
+| `dom` | HTML-to-PDF parsing |
+| `libxml` | XML/HTML document support |
+
+Most managed WordPress hosts enable all of these by default. If one is missing, contact your hosting provider and ask them to enable it.
+
+## Verify system status
+
+After downloading fonts and saving settings, Fluent PDF performs a system status check automatically. If any required PHP extension is missing or misconfigured, the settings page will display a status row for each extension with a plain-language description of the problem.
+
+All five status rows should show a passing state before you create your first PDF feed. If any show an error, resolve the PHP extension issue with your host before proceeding.
+
+<Warning>
+  Generating a PDF while a required extension is missing will result in an error page instead of a PDF file.
+</Warning>
+
+## Migrating from the old fluentforms-pdf plugin
+
+If you previously used the standalone `fluentforms-pdf` plugin, Fluent PDF automatically migrates your existing feeds and settings on activation. After confirming your feeds are intact, you can deactivate and remove `fluentforms-pdf`. A notice in the WordPress admin will prompt you to do this with a one-click deactivation link.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Create your first PDF feed and generate a PDF from a form submission.
+  </Card>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Configure default paper size, fonts, colors, and language direction.
+  </Card>
+</CardGroup>

@@ -1,0 +1,105 @@
+---
+title: "Invoice template"
+description: "Generate payment receipts automatically using the Invoice template. Available exclusively for Fluent Forms with payment enabled, it renders order line items, payment summary, and business details."
+---
+
+The Invoice template generates a structured payment receipt PDF. It is only available for forms that have payments enabled — forms where `has_payment` is `true`. If your form does not use Fluent Forms payments, this template will not appear in the template picker when creating a feed.
+
+<Info>
+  The Invoice template requires **Fluent Forms Pro** with the payments module active. The template itself is included in Fluent PDF, but the payment data it renders (`{payment.order_items}`, `{payment.summary_list}`, business settings) is provided by Fluent Forms Pro.
+</Info>
+
+## Layout overview
+
+The generated invoice contains four sections rendered top to bottom:
+
+1. **Header row** — business logo and details on the left; receipt number, order number, payment date, and customer details on the right
+2. **Body text** — optional introductory text above the line items
+3. **Order items and payment summary** — order line items table followed by a payment details summary
+4. **Footer** — thank-you or closing text
+
+## Configurable fields
+
+<ParamField body="logo" type="image_widget">
+  URL of your business logo. Displayed in the top-left of the invoice header, constrained to a maximum of 200 × 100 px.
+
+  If this field is left empty, Fluent PDF falls back to the logo configured in Fluent Forms Pro payment settings (**Fluent Forms → Settings → Payment Settings → Business Logo**).
+</ParamField>
+
+<ParamField body="customer_name" type="value_text">
+  The customer's name. Use the smart code picker to map this to a form field — for example, `{inputs.name}` or `{inputs.full_name}`. Displayed in the **Customer Details** block in the header.
+</ParamField>
+
+<ParamField body="customer_email" type="value_text">
+  The customer's email address. Use the smart code picker to map this to a form field — for example, `{inputs.email}`. Displayed in the **Customer Details** block.
+</ParamField>
+
+<ParamField body="customer_address" type="value_text">
+  The customer's mailing or billing address. Use the smart code picker to map this to a form field. Displayed in the **Customer Details** block.
+</ParamField>
+
+<ParamField body="invoice_prefix" type="value_text">
+  A text string prepended to the submission serial number to form the receipt identifier shown at the top of the invoice. For example, setting this to `INV` produces a receipt number like `INV-42`.
+
+  If left empty, no receipt number heading is displayed.
+</ParamField>
+
+<ParamField body="invoice_upper_text" type="wp-editor">
+  Optional rich-text body content displayed above the order line items. Use this for introductory copy, terms, or any HTML content.
+
+  <Note>
+    If this field contains `{payment.receipt}` or `{payment.order_items}`, the automatic order items section is suppressed to avoid duplication. In that case, embed the payment content directly in this field.
+  </Note>
+</ParamField>
+
+<ParamField body="invoice_thanks" type="value_textarea">
+  Closing text displayed at the bottom of the invoice, below the payment summary. Defaults to `Thank you for your order`. Supports plain text and smart codes.
+</ParamField>
+
+## Auto-populated data
+
+The following data is pulled automatically from the submission and Fluent Forms Pro payment settings — no additional configuration is required.
+
+| Data | Source |
+|---|---|
+| Order line items | `{payment.order_items}` — rendered as a table of products, quantities, and prices |
+| Payment summary | `{payment.summary_list}` — rendered as a payment details table (subtotal, tax, total, etc.) |
+| Business name | Fluent Forms Pro payment settings (`business_name`) |
+| Business address | Fluent Forms Pro payment settings (`business_address`) |
+| Order number | Submission ID from `fluentform_submissions` |
+| Payment date | Submission `created_at` timestamp, formatted using the WordPress date format |
+
+## Invoice number format
+
+When `invoice_prefix` is set, the receipt identifier is rendered as:
+
+```
+{invoice_prefix}-{serial_number}
+```
+
+Where `{serial_number}` is the form's sequential submission serial number. For example, with a prefix of `INV` and serial number `42`, the displayed receipt number is `INV-42`.
+
+## Business logo fallback
+
+The logo display logic works as follows:
+
+1. If the `logo` field in the feed is set to a URL, that image is used.
+2. If `logo` is empty and Fluent Forms Pro is active, the logo from **Payment Settings → Business Logo** is used instead.
+3. If neither is set, no logo is shown in the header.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="PDF templates" icon="file" href="/fluent-forms/templates">
+    Overview of all available templates and the custom template filter.
+  </Card>
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    Create and configure per-form PDF feeds.
+  </Card>
+  <Card title="Email attachments" icon="envelope" href="/fluent-forms/email-attachments">
+    Attach invoices to notification emails automatically.
+  </Card>
+  <Card title="PDF shortcodes" icon="brackets-curly" href="/fluent-forms/shortcodes">
+    Give customers a download link in the confirmation message.
+  </Card>
+</CardGroup>

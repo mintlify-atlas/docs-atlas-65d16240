@@ -1,0 +1,278 @@
+---
+title: 'Generating PDFs programmatically'
+description: 'Two approaches to generate PDFs from PHP: the fluent_pdf_make action hook and the FluentPdf\API\Pdf class.'
+---
+
+You can generate PDFs from any PHP code in your plugin or theme — no Fluent Forms submission required. There are two approaches depending on how much control you need.
+
+<Note>
+  Fluent PDF must be active and fully loaded before you call any of its APIs. Always generate PDFs from a hook that runs after `plugins_loaded` (e.g., `init`, `wp`, or a custom action hook).
+</Note>
+
+---
+
+## Approach 1 — Action hook (recommended for simple cases)
+
+<Tip>
+  The `fluent_pdf_make` action is the simplest way to generate a PDF. It requires no class imports and works from any plugin or theme with a single `do_action()` call.
+</Tip>
+
+```php
+do_action( 'fluent_pdf_make', [
+    'header' => '<h1>Hello header</h1>',
+    'footer' => '<p>Hello footer</p>',
+    'body'   => '<p>Hello content</p>',
+] );
+```
+
+This outputs the PDF inline to the browser. Call it from a request handler and follow it with `exit` or `die` so no other output interferes.
+
+**Real-world example — generate on a custom URL parameter:**
+
+```php
+add_action( 'init', function () {
+    if ( ! isset( $_GET['my_pdf'] ) ) {
+        return;
+    }
+
+    do_action( 'fluent_pdf_make', [
+        'header' => '<h1>Hello header</h1>',
+        'footer' => '<p>Hello footer</p>',
+        'body'   => '<p>Hello content</p>',
+    ] );
+
+    die();
+} );
+```
+
+### Full signature
+
+`fluent_pdf_make` accepts up to five arguments:
+
+```php
+do_action(
+    'fluent_pdf_make',
+    array  $content,      // Required — ['header' => '', 'body' => '', 'footer' => '']
+    string $filename,     // Optional — default: 'document.pdf'
+    string $outputType,   // Optional — 'I', 'D', 'S', or 'F'; default: 'I'
+    array  $config,       // Optional — mPDF constructor config
+    array  $extraConfig   // Optional — password, direction, watermark_text, watermark_image
+);
+```
+
+**Download instead of displaying inline:**
+
+```php
+do_action(
+    'fluent_pdf_make',
+    [
+        'header' => '<h2>Order Confirmation</h2>',
+        'body'   => '<p>Your order has been placed. Thank you!</p>',
+        'footer' => '<p style="text-align:center;">Page {PAGENO} of {nbpg}</p>',
+    ],
+    'order-confirmation.pdf',
+    'D'   // force download
+);
+die();
+```
+
+**Landscape A3 with a password:**
+
+```php
+do_action(
+    'fluent_pdf_make',
+    [
+        'header' => '<h1>Quarterly Report</h1>',
+        'body'   => $reportHtml,
+        'footer' => '<p>Confidential</p>',
+    ],
+    'quarterly-report.pdf',
+    'I',
+    [ 'format' => 'A3', 'orientation' => 'L' ],
+    [ 'password' => 'secret123' ]
+);
+die();
+```
+
+---
+
+## Output type constants
+
+| Value | Behaviour |
+|-------|-----------|
+| `'I'` | Send the PDF inline to the browser (displays in PDF viewer). |
+| `'D'` | Force a file download. |
+| `'S'` | Return the PDF as a PHP string (no output sent to the browser). |
+| `'F'` | Write the PDF to the file system at the given path. |
+
+---
+
+## Approach 2 — Pdf class directly
+
+Use `FluentPdf\API\Pdf` when you need more control: accessing the underlying mPDF instance, chaining configuration, storing the PDF binary in a variable, or saving to a custom file path.
+
+### Basic usage
+
+```php
+$pdf = new \FluentPdf\API\Pdf([
+    'format'      => 'A4',
+    'orientation' => 'P',
+    'mode'        => 'utf-8',
+]);
+
+$pdf->setHeader('<h1>My Header</h1>');
+$pdf->setBody('<p>PDF content here</p>');
+$pdf->setFooter('<p>Page footer</p>');
+$pdf->download('my-document.pdf');
+exit;
+```
+
+### Applying extra options
+
+`setOtherConfig()` applies settings that do not map to mPDF constructor arguments: passwords, text direction, and watermarks.
+
+```php
+$pdf = new \FluentPdf\API\Pdf([
+    'format'      => 'A4',
+    'orientation' => 'P',
+    'mode'        => 'utf-8',
+]);
+
+$pdf->setHeader('<h1>My Header</h1>');
+$pdf->setBody('<p>PDF content here</p>');
+$pdf->setFooter('<p>Page footer</p>');
+
+$pdf->setOtherConfig([
+    'password'       => 'secret',
+    'direction'      => 'ltr',
+    'watermark_text' => [ 'text' => 'CONFIDENTIAL', 'alpha' => 0.08 ],
+    'watermark_image' => [
+        'image' => 'https://example.com/logo.png',
+        'alpha' => 0.1,
+        'behind' => true,
+    ],
+]);
+
+$pdf->download('my-document.pdf');
+exit;
+```
+
+### Saving to the file system
+
+```php
+$pdf = new \FluentPdf\API\Pdf([ 'format' => 'A4', 'mode' => 'utf-8' ]);
+$pdf->setBody('<p>Invoice #1024</p>');
+
+$upload_dir = wp_upload_dir();
+$path = $upload_dir['basedir'] . '/invoices/invoice-1024.pdf';
+
+$pdf->stream( $path );
+```
+
+### Getting the PDF as a string
+
+Useful for attaching to emails or processing the binary in memory:
+
+```php
+$pdf = new \FluentPdf\API\Pdf([ 'format' => 'A4', 'mode' => 'utf-8' ]);
+$pdf->setBody('<p>Receipt content</p>');
+
+$pdfString = $pdf->asString('receipt.pdf');
+
+// Attach to an email with wp_mail()
+wp_mail(
+    'customer@example.com',
+    'Your receipt',
+    'Please find your receipt attached.',
+    [],
+    // wp_mail doesn't accept raw strings — save to a temp file first:
+    // [ $tempFile ]
+);
+```
+
+### Accessing the mPDF instance
+
+Call `getInstance()` to use the raw mPDF API for operations not covered by the wrapper:
+
+```php
+$pdf = new \FluentPdf\API\Pdf([ 'format' => 'A4', 'mode' => 'utf-8' ]);
+$pdf->setBody('<p>Content</p>');
+
+$mpdf = $pdf->getInstance();
+$mpdf->SetTitle('Annual Report 2026');
+$mpdf->SetAuthor('My Company');
+$mpdf->SetCreator('Fluent PDF');
+
+$pdf->download('annual-report.pdf');
+exit;
+```
+
+---
+
+## Using `generateAll()` — one-call generation
+
+`generateAll()` builds and outputs a complete PDF in a single method call. It is equivalent to calling `setHeader()`, `setFooter()`, `setBody()`, `setOtherConfig()`, and `output()` in sequence.
+
+```php
+$pdf = new \FluentPdf\API\Pdf();
+
+$pdf->generateAll(
+    [
+        'header' => '<h2>Summary Report</h2>',
+        'body'   => '<p>Report content.</p>',
+        'footer' => '<p>Page {PAGENO} of {nbpg}</p>',
+    ],
+    'summary-report.pdf',
+    'D',                            // force download
+    [ 'format' => 'A4', 'orientation' => 'L' ],
+    [ 'password' => 'mypassword' ]
+);
+exit;
+```
+
+---
+
+## Reading the global config
+
+Use the static `getGlobalConfig()` method to read the paper size, font, colors, and other defaults configured in the Fluent PDF admin settings — so your programmatic PDFs respect the site's global configuration.
+
+```php
+$config = \FluentPdf\API\Pdf::getGlobalConfig();
+
+$pdf = new \FluentPdf\API\Pdf([
+    'format'      => $config['paper_size']  ?? 'A4',
+    'orientation' => $config['orientation'] ?? 'P',
+    'mode'        => 'utf-8',
+]);
+```
+
+---
+
+## Choosing an approach
+
+| | Action hook | Pdf class |
+|---|---|---|
+| Setup required | None | `use` or fully-qualified class name |
+| Output types | All four (`I`, `D`, `S`, `F`) | All four |
+| Extra config (watermarks, password) | Yes, via 5th argument | Yes, via `setOtherConfig()` |
+| Access to raw mPDF | No | Yes, via `getInstance()` |
+| Best for | Quick one-off PDFs | Complex documents, reusable classes |
+
+---
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="PHP API reference" icon="brackets-curly" href="/developer/api-reference">
+    Full method reference for the FluentPdf\API\Pdf class.
+  </Card>
+  <Card title="Hooks and filters" icon="filter" href="/developer/hooks-and-filters">
+    All actions and filters, including fluent_pdf_make.
+  </Card>
+  <Card title="Building custom templates" icon="paintbrush" href="/developer/custom-templates">
+    Build a custom template for Fluent Forms PDF feeds.
+  </Card>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Configure default paper size, fonts, and colors.
+  </Card>
+</CardGroup>

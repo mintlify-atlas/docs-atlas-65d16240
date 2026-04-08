@@ -1,0 +1,130 @@
+---
+title: "PDF templates"
+description: "Overview of the built-in PDF templates available in Fluent PDF, how they work, and how to register custom templates using the fluentform/pdf_templates filter."
+---
+
+A PDF template controls the HTML structure and default settings of a generated PDF. When you create a PDF feed, you choose a template. Fluent PDF includes two built-in templates and provides a filter hook to register additional ones.
+
+## Built-in templates
+
+<CardGroup cols={2}>
+  <Card title="General template" icon="file-lines" href="/fluent-forms/templates#general-template">
+    Available for all forms. Renders a fully customizable header, body, and footer.
+  </Card>
+  <Card title="Invoice template" icon="receipt" href="/fluent-forms/invoice-template">
+    Available only for forms with payment enabled. Renders a structured receipt with order line items and payment summary.
+  </Card>
+</CardGroup>
+
+## General template
+
+The General template is the default template available for every Fluent Form. It gives you full control over three content regions: header, body, and footer.
+
+### Fields
+
+| Field | Component | Default value | Description |
+|---|---|---|---|
+| `header` | wp-editor | `<h2>PDF Title</h2>` | HTML shown at the top of every page. |
+| `body` | wp-editor | `{all_data}` | Main PDF content. Supports all Fluent Forms smart codes. |
+| `footer` | wp-editor | Date and page number table (see below) | HTML shown at the bottom of every page. |
+
+**Default footer value:**
+
+```html
+<table width="100%">
+  <tr>
+    <td width="50%">{DATE j-m-Y}</td>
+    <td width="50%" style="text-align: right;" align="right">{PAGENO}/{nbpg}</td>
+  </tr>
+</table>
+```
+
+The `{all_data}` shortcode in the body renders a formatted HTML table of every field label and its submitted value. You can replace or supplement it with any combination of smart codes, static HTML, or conditional content blocks (Fluent Forms Pro).
+
+<Tip>
+  Fluent Forms Pro users can use conditional content blocks inside the PDF body. Wrap content in conditional tags and it will be included or excluded based on the submission data.
+</Tip>
+
+## Invoice template
+
+The Invoice template is only shown when the form has payments enabled (`has_payment = true`). It generates a structured receipt document with business details, customer information, order line items, and a payment summary.
+
+See [Invoice template](/fluent-forms/invoice-template) for the full field reference.
+
+## How templates are resolved
+
+When a PDF feed is saved, the `template_key` value (e.g. `general` or `invoice`) is stored alongside the feed settings. When the PDF is generated, Fluent PDF looks up the corresponding PHP class from the templates registry and instantiates it.
+
+The built-in registry is:
+
+```php
+[
+    'general' => [
+        'name'  => 'General',
+        'class' => '\FluentPdf\Modules\FluentForms\Templates\GeneralTemplate',
+        'key'   => 'general',
+    ],
+    'invoice' => [  // only for payment forms
+        'name'  => 'Invoice',
+        'class' => '\FluentPdf\Modules\FluentForms\Templates\InvoiceTemplate',
+        'key'   => 'invoice',
+    ],
+]
+```
+
+Each template class extends `TemplateManager` and must implement two methods:
+
+- `getSettingsFields()` — returns the array of feed settings fields to render in the admin UI
+- `generatePdf($submissionId, $feed, $output, $fileName)` — builds the HTML body and delegates to `pdfBuilder()`
+
+## Registering a custom template
+
+Use the `fluentform/pdf_templates` filter to add your own template to the registry.
+
+```php
+apply_filters('fluentform/pdf_templates', $templates, $form)
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `$templates` | `array` | Existing templates array keyed by `template_key`. |
+| `$form` | `object` | The current Fluent Form object. Use `$form->has_payment` to conditionally register templates for payment forms only. |
+
+### Example
+
+```php
+add_filter('fluentform/pdf_templates', function ($templates, $form) {
+    $templates['my_custom'] = [
+        'name'    => 'My Custom Template',
+        'class'   => '\MyPlugin\PdfTemplates\MyCustomTemplate',
+        'key'     => 'my_custom',
+        'preview' => plugin_dir_url(__FILE__) . 'assets/preview.png',
+    ];
+    return $templates;
+}, 10, 2);
+```
+
+Your class must extend `\FluentPdf\Modules\FluentForms\Templates\TemplateManager` and implement `getSettingsFields()` and `generatePdf()`. See [custom templates](/developer/custom-templates) for a complete walkthrough.
+
+<Note>
+  The legacy filter `fluentform_pdf_templates` is still accepted for backward compatibility but is deprecated. Use `fluentform/pdf_templates` in new code.
+</Note>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Invoice template" icon="receipt" href="/fluent-forms/invoice-template">
+    Full field reference for the Invoice template.
+  </Card>
+  <Card title="Custom templates" icon="code" href="/developer/custom-templates">
+    Build and register your own PDF template class.
+  </Card>
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    Create and configure per-form PDF feeds.
+  </Card>
+  <Card title="Hooks and filters" icon="filter" href="/developer/hooks-and-filters">
+    Full reference for all Fluent PDF filter hooks.
+  </Card>
+</CardGroup>

@@ -1,0 +1,96 @@
+{
+  "projectType": "framework",
+  "projectName": "Fluent PDF",
+  "projectDescription": "A WordPress plugin that generates, customizes, and delivers PDF documents from form submissions and other Fluent product entries, with a hook-based extensibility system for third-party integrations.",
+  "theme": "palm",
+  "primaryColor": "#E05C0C",
+  "lightColor": "#FFF3EC",
+  "darkColor": "#7A2A00",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/global-settings",
+              "configuration/fonts",
+              "configuration/paper-and-layout"
+            ]
+          },
+          {
+            "group": "Fluent Forms Integration",
+            "pages": [
+              "fluent-forms/pdf-feeds",
+              "fluent-forms/templates",
+              "fluent-forms/invoice-template",
+              "fluent-forms/email-attachments",
+              "fluent-forms/shortcodes"
+            ]
+          },
+          {
+            "group": "Developer Guide",
+            "pages": [
+              "developer/api-reference",
+              "developer/hooks-and-filters",
+              "developer/custom-templates",
+              "developer/generating-pdfs-programmatically"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/troubleshooting",
+              "reference/changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automated PDF generation from Fluent Forms entries",
+    "General and Invoice PDF templates",
+    "Customizable paper size, orientation, fonts, and colors",
+    "Watermark support (image and text)",
+    "Password-protected PDFs",
+    "Email PDF attachments on form submission",
+    "RTL language support (Arabic, Hebrew, etc.)",
+    "PDF download shortcodes for submission confirmation messages",
+    "Public (unauthenticated) PDF download links",
+    "Hook-based API for third-party plugin integration",
+    "Custom font upload and management",
+    "Conditional PDF body content (Fluent Forms Pro)"
+  ],
+  "publicApiSurface": [
+    "do_action('fluent_pdf_make', ['header', 'body', 'footer'], $filename, $outputType, $config, $extraConfig)",
+    "do_action('fluent_pdf_loaded')",
+    "apply_filters('fluentform/pdf_templates', $templates, $form)",
+    "apply_filters('fluentform/pdf_body_parse', $content, $entryId, $formData, $form)",
+    "apply_filters('fluent/pdf_working_dir', $path)",
+    "apply_filters('fluent/pdf_temp_dir', $path)",
+    "apply_filters('fluent/pdf_cache_dir', $path)",
+    "apply_filters('fluent/pdf_font_dir', $path)",
+    "apply_filters('fluent/pdf_font_list', $fonts)",
+    "apply_filters('fluent_pdf_hide_menu', false)",
+    "FluentPdf\\API\\Pdf::getGlobalConfig()",
+    "FluentPdf\\API\\Pdf::setHeader($html)",
+    "FluentPdf\\API\\Pdf::setFooter($html)",
+    "FluentPdf\\API\\Pdf::setBody($html)",
+    "FluentPdf\\API\\Pdf::setOtherConfig($config)",
+    "FluentPdf\\API\\Pdf::output($filename, $outputType)",
+    "FluentPdf\\API\\Pdf::download($filename)",
+    "FluentPdf\\API\\Pdf::show($filename)",
+    "FluentPdf\\API\\Pdf::asString($filename)",
+    "FluentPdf\\API\\Pdf::generateAll($content, $filename, $outputType, $config, $extraConfig)"
+  ]
+}

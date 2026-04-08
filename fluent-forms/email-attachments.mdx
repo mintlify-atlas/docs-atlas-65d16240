@@ -1,0 +1,83 @@
+---
+title: "Email attachments"
+description: "Automatically attach generated PDFs to Fluent Forms notification emails by selecting one or more PDF feeds in the notification settings."
+---
+
+Fluent PDF can attach one or more PDFs to any Fluent Forms notification email. The PDF is generated fresh from the submission data at the time the email is sent, then attached to the outgoing message as a file.
+
+## Setting up an attachment
+
+<Steps>
+  <Step title="Open the notification">
+    From your form in the WordPress admin, go to **Settings → Notifications**. Click **Edit** on the notification you want to modify (or create a new one).
+  </Step>
+  <Step title="Find the PDF Attachments section">
+    Scroll down to the **PDF Attachments** section within the notification editor. This section lists all PDF feeds that have been created for the form.
+  </Step>
+  <Step title="Select feeds to attach">
+    Check one or more PDF feeds. Each selected feed will be generated and attached as a separate file when the notification is sent.
+  </Step>
+  <Step title="Save the notification">
+    Click **Save**. The next time a submission triggers this notification, the selected PDFs will be included as file attachments.
+  </Step>
+</Steps>
+
+<Note>
+  PDF feeds must be created before they appear in the PDF Attachments section. If the list is empty, go to **Settings → PDF Feeds** and create at least one feed first.
+</Note>
+
+## How it works
+
+Attachments are handled by the `fluentform/email_attachments` filter. When Fluent Forms prepares a notification email, Fluent PDF hooks in and:
+
+1. Reads the `pdf_attachments` array from the notification's email data — a list of feed IDs selected for attachment.
+2. For each selected feed, instantiates the appropriate template class and calls `outputPDF()` to write the rendered PDF to the plugin's cache directory as a temporary file.
+3. Appends each file path to the `$emailAttachments` array returned to Fluent Forms.
+4. Fluent Forms attaches the files to the outgoing email using WordPress's `wp_mail()`.
+
+The PDF filename is derived from the feed name with the submission ID and feed ID appended, then sanitized:
+
+```
+{feed_name}_{entry_id}_{feed_id}.pdf
+```
+
+Smart codes in the feed name are parsed against the submission data before sanitization, so a feed named `Invoice {inputs.first_name}` produces a filename like `invoice-jane-5-3.pdf`.
+
+## Temporary file cleanup
+
+PDF files written for email attachments are stored in the plugin's cache directory. A scheduled cleanup action removes files older than 6 hours:
+
+```php
+do_action('fluent_pdf_cleanup_tmp_dir');
+```
+
+This action is triggered automatically on a schedule. Files named `.htaccess` and `index.html` (protection files) are always preserved.
+
+<Warning>
+  Do not rely on attachment files persisting after the email is sent. The cleanup runs periodically and removes old files from the cache directory. If you need to retain copies of generated PDFs, configure a storage integration or download them from the **Entries** screen.
+</Warning>
+
+## Multisite note
+
+On WordPress multisite installations, the blog ID is appended to the generated filename to prevent collisions across sites sharing the same upload directory:
+
+```
+{feed_name}_{entry_id}_{feed_id}_{blog_id}.pdf
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    Create the PDF feeds that appear in the attachment selector.
+  </Card>
+  <Card title="PDF shortcodes" icon="brackets-curly" href="/fluent-forms/shortcodes">
+    Add a download link to the confirmation message instead of (or in addition to) an attachment.
+  </Card>
+  <Card title="Hooks and filters" icon="filter" href="/developer/hooks-and-filters">
+    Full reference including the `fluentform/email_attachments` filter.
+  </Card>
+  <Card title="Invoice template" icon="receipt" href="/fluent-forms/invoice-template">
+    Attach payment receipts to order confirmation emails.
+  </Card>
+</CardGroup>

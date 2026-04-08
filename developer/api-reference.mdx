@@ -1,0 +1,418 @@
+---
+title: 'PHP API reference'
+description: 'Complete reference for the FluentPdf\API\Pdf class — the primary PHP interface for generating PDFs programmatically.'
+---
+
+The `FluentPdf\API\Pdf` class wraps [mPDF](https://mpdf.github.io/) and exposes a clean, chainable interface for building PDFs from PHP. Use it when you need full programmatic control over PDF generation outside of Fluent Forms feeds.
+
+<Note>
+  This class is available after the plugin boots on the `plugins_loaded` hook. Always call it from within a hook that runs after `plugins_loaded` (priority 10 or later).
+</Note>
+
+---
+
+## Class: `FluentPdf\API\Pdf`
+
+**Namespace:** `FluentPdf\API`
+
+**File:** `API/Pdf.php`
+
+---
+
+## Constructor
+
+```php
+new \FluentPdf\API\Pdf( array $config = [] )
+```
+
+Creates a new PDF instance. The `$config` array is passed directly to the mPDF constructor, giving you full control over paper format, orientation, encoding, margins, and more.
+
+<ParamField body="config" type="array" default="[]">
+  Configuration options passed directly to the `\Mpdf\Mpdf` constructor. Common keys:
+
+  | Key | Type | Description |
+  |-----|------|-------------|
+  | `format` | `string` | Paper size, e.g. `'A4'`, `'Letter'`, `'Legal'`. Defaults to mPDF's default (`'A4'`). |
+  | `orientation` | `string` | `'P'` for portrait, `'L'` for landscape. |
+  | `mode` | `string` | Character encoding mode. Use `'utf-8'` for full Unicode support. |
+  | `margin_top` | `float` | Top margin in millimetres. |
+  | `margin_bottom` | `float` | Bottom margin in millimetres. |
+  | `margin_left` | `float` | Left margin in millimetres. |
+  | `margin_right` | `float` | Right margin in millimetres. |
+  | `margin_header` | `float` | Space reserved for the header in millimetres. |
+  | `margin_footer` | `float` | Space reserved for the footer in millimetres. |
+  | `default_font` | `string` | mPDF font name to use as the document default. |
+  | `default_font_size` | `int` | Default font size in points. |
+</ParamField>
+
+**Example:**
+
+```php
+$pdf = new \FluentPdf\API\Pdf([
+    'format'      => 'A4',
+    'orientation' => 'P',
+    'mode'        => 'utf-8',
+]);
+```
+
+---
+
+## Static methods
+
+### `getGlobalConfig()`
+
+```php
+public static function getGlobalConfig(): array
+```
+
+Returns the global PDF settings stored in the plugin's admin configuration (paper size, orientation, font, font size, colors, language direction).
+
+**Returns:** `array` — associative array of global settings.
+
+```php
+$config = \FluentPdf\API\Pdf::getGlobalConfig();
+// [
+//   'paper_size'         => 'A4',
+//   'orientation'        => 'P',
+//   'font'               => 'default',
+//   'font_size'          => '14',
+//   'font_color'         => '#323232',
+//   'accent_color'       => '#989797',
+//   'heading_color'      => '#000000',
+//   'language_direction' => 'ltr',
+// ]
+```
+
+---
+
+## Instance methods
+
+### `setHeader()`
+
+```php
+public function setHeader( string $header ): \Mpdf\Mpdf
+```
+
+Sets the HTML content rendered as a header on every page of the document.
+
+<ParamField body="header" type="string" required>
+  An HTML string. Pass an empty string to render no header.
+</ParamField>
+
+**Returns:** The raw `\Mpdf\Mpdf` instance.
+
+```php
+$pdf->setHeader('<h3 style="text-align:center;">Monthly Report — April 2026</h3>');
+```
+
+---
+
+### `setFooter()`
+
+```php
+public function setFooter( string $footer ): \Mpdf\Mpdf
+```
+
+Sets the HTML content rendered as a footer on every page of the document.
+
+<ParamField body="footer" type="string" required>
+  An HTML string. Pass an empty string to render no footer.
+</ParamField>
+
+**Returns:** The raw `\Mpdf\Mpdf` instance.
+
+```php
+$pdf->setFooter('<p style="text-align:center;">Page {PAGENO} of {nbpg}</p>');
+```
+
+---
+
+### `setBody()`
+
+```php
+public function setBody( string $body ): \Mpdf\Mpdf
+```
+
+Writes the main HTML content into the PDF body.
+
+<ParamField body="body" type="string" required>
+  An HTML string representing the document body. Standard HTML tags and inline styles are supported.
+</ParamField>
+
+**Returns:** The raw `\Mpdf\Mpdf` instance.
+
+```php
+$pdf->setBody('<h1>Invoice #1024</h1><p>Thank you for your order.</p>');
+```
+
+---
+
+### `setOtherConfig()`
+
+```php
+public function setOtherConfig( array $otherConfig ): void
+```
+
+Applies additional configuration options to the mPDF instance: passwords, text direction, watermarks, and alternative HTML headers. Internally delegates to `FluentPdf\Classes\Helper\Helper::reflectConfig()`.
+
+<ParamField body="otherConfig" type="array" required>
+  An associative array. All keys are optional.
+
+  | Key | Type | Description |
+  |-----|------|-------------|
+  | `password` | `string` | Sets an owner and user password on the PDF, restricting printing and copying. |
+  | `direction` | `string` | Text direction: `'ltr'` or `'rtl'`. Use `'rtl'` for Arabic, Hebrew, etc. |
+  | `htmlHeader` | `string` | An alternative HTML header (overwrites any header set by `setHeader()`). |
+  | `watermark_image` | `array` | Array with keys `image` (URL/path), `alpha` (0–1 float opacity), and optionally `behind` (bool — render behind content). |
+  | `watermark_text` | `array` | Array with keys `text` (string) and `alpha` (0–1 float opacity). |
+</ParamField>
+
+**Returns:** `void`
+
+```php
+$pdf->setOtherConfig([
+    'password'       => 'secret123',
+    'direction'      => 'rtl',
+    'watermark_text' => ['text' => 'CONFIDENTIAL', 'alpha' => 0.1],
+]);
+```
+
+---
+
+### `output()`
+
+```php
+public function output( string $filename = 'document.pdf', string|null $outputType = null ): string
+```
+
+Generates the PDF and delivers it according to the specified output type.
+
+<ParamField body="filename" type="string" default="document.pdf">
+  The filename used for the output (used as the download name or file path for `'F'` mode).
+</ParamField>
+
+<ParamField body="outputType" type="string">
+  How the PDF is delivered:
+
+  | Value | Behaviour |
+  |-------|-----------|
+  | `'I'` | Send inline to the browser (display in PDF viewer). |
+  | `'D'` | Force a file download in the browser. |
+  | `'S'` | Return the PDF as a raw string (no output). |
+  | `'F'` | Save the PDF to the file system at the path given in `$filename`. |
+  | `null` | Uses mPDF's default behaviour (`'I'`). |
+</ParamField>
+
+**Returns:** `string` — the PDF binary string when `'S'` is used; empty string otherwise.
+
+---
+
+### `download()`
+
+```php
+public function download( string $filename = 'document.pdf' ): void
+```
+
+Sends the PDF to the browser and forces a file download (`Destination::DOWNLOAD`).
+
+<ParamField body="filename" type="string" default="document.pdf">
+  The filename shown in the browser's save dialog.
+</ParamField>
+
+```php
+$pdf->download('invoice-1024.pdf');
+```
+
+---
+
+### `show()`
+
+```php
+public function show( string $filename = 'document.pdf' ): void
+```
+
+Sends the PDF to the browser for inline display (`Destination::INLINE`). Most browsers will open it in their built-in PDF viewer.
+
+<ParamField body="filename" type="string" default="document.pdf">
+  The filename embedded in the `Content-Disposition` header.
+</ParamField>
+
+```php
+$pdf->show('report.pdf');
+```
+
+---
+
+### `stream()`
+
+```php
+public function stream( string $filename = 'document.pdf' ): void
+```
+
+Saves the PDF to the file system (`Destination::FILE`). The `$filename` should be an absolute server path.
+
+<ParamField body="filename" type="string" default="document.pdf">
+  Absolute filesystem path where the PDF will be written.
+</ParamField>
+
+```php
+$upload_dir = wp_upload_dir();
+$pdf->stream( $upload_dir['basedir'] . '/my-reports/report.pdf' );
+```
+
+---
+
+### `asString()`
+
+```php
+public function asString( string $filename = 'document.pdf' ): string
+```
+
+Returns the PDF binary as a PHP string without sending any output (`Destination::STRING_RETURN`). Useful for email attachments or storing in a variable.
+
+<ParamField body="filename" type="string" default="document.pdf">
+  Filename embedded in the output (used internally by mPDF).
+</ParamField>
+
+**Returns:** `string` — the raw PDF binary.
+
+```php
+$pdfString = $pdf->asString('attachment.pdf');
+// Pass $pdfString to wp_mail() or save to a file.
+```
+
+---
+
+### `getInstance()`
+
+```php
+public function getInstance(): \Mpdf\Mpdf
+```
+
+Returns the underlying `\Mpdf\Mpdf` instance for advanced configuration not exposed by the wrapper methods (custom CSS injection, page breaks, bookmarks, and so on).
+
+**Returns:** `\Mpdf\Mpdf`
+
+```php
+$mpdf = $pdf->getInstance();
+$mpdf->AddPage();
+$mpdf->SetTitle('My Document');
+```
+
+---
+
+### `generateAll()`
+
+```php
+public function generateAll(
+    array  $content,
+    string $filename,
+    string $outputType,
+    array  $config,
+    array  $extraConfig
+): string
+```
+
+All-in-one method that builds and outputs a complete PDF in a single call. Internally delegates to `FluentPdf\Classes\PdfBuilder::generatePdf()`.
+
+<ParamField body="content" type="array" required>
+  Associative array with the document sections:
+
+  | Key | Type | Description |
+  |-----|------|-------------|
+  | `header` | `string` | HTML for the page header. |
+  | `body` | `string` | HTML for the document body. |
+  | `footer` | `string` | HTML for the page footer. |
+</ParamField>
+
+<ParamField body="filename" type="string" required>
+  Output filename, e.g. `'document.pdf'`.
+</ParamField>
+
+<ParamField body="outputType" type="string" required>
+  Output destination: `'I'`, `'D'`, `'S'`, or `'F'`.
+</ParamField>
+
+<ParamField body="config" type="array" required>
+  mPDF constructor config (same as the `Pdf` constructor `$config` parameter).
+</ParamField>
+
+<ParamField body="extraConfig" type="array" required>
+  Extra config (same as the `setOtherConfig()` `$otherConfig` parameter): `password`, `direction`, `htmlHeader`, `watermark_image`, `watermark_text`.
+</ParamField>
+
+**Returns:** `string` — the PDF binary when `$outputType` is `'S'`; empty string otherwise.
+
+---
+
+## Complete example
+
+```php
+add_action('init', function () {
+
+    if ( ! isset( $_GET['generate_pdf'] ) ) {
+        return;
+    }
+
+    // Get global plugin settings (paper size, font, etc.)
+    $globalConfig = \FluentPdf\API\Pdf::getGlobalConfig();
+
+    // Instantiate with mPDF constructor config
+    $pdf = new \FluentPdf\API\Pdf([
+        'format'      => $globalConfig['paper_size'] ?? 'A4',
+        'orientation' => $globalConfig['orientation'] ?? 'P',
+        'mode'        => 'utf-8',
+    ]);
+
+    // Build the document
+    $pdf->setHeader('<h3>My Company — Confidential</h3>');
+
+    $pdf->setBody('
+        <h1>Annual Report 2026</h1>
+        <p>Total revenue: <strong>$120,000</strong></p>
+        <table border="1" cellpadding="6">
+            <tr><th>Quarter</th><th>Revenue</th></tr>
+            <tr><td>Q1</td><td>$28,000</td></tr>
+            <tr><td>Q2</td><td>$30,000</td></tr>
+            <tr><td>Q3</td><td>$32,000</td></tr>
+            <tr><td>Q4</td><td>$30,000</td></tr>
+        </table>
+    ');
+
+    $pdf->setFooter(
+        '<table width="100%"><tr>'
+        . '<td>Generated: ' . date('Y-m-d') . '</td>'
+        . '<td style="text-align:right;">Page {PAGENO}/{nbpg}</td>'
+        . '</tr></table>'
+    );
+
+    // Apply extra options
+    $pdf->setOtherConfig([
+        'password'       => 'supersecret',
+        'watermark_text' => ['text' => 'DRAFT', 'alpha' => 0.08],
+    ]);
+
+    // Send to browser as a download
+    $pdf->download('annual-report-2026.pdf');
+    exit;
+});
+```
+
+---
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Generating PDFs programmatically" icon="code" href="/developer/generating-pdfs-programmatically">
+    Two approaches: action hooks and the Pdf class directly.
+  </Card>
+  <Card title="Hooks and filters" icon="filter" href="/developer/hooks-and-filters">
+    All WordPress actions and filters exposed by the plugin.
+  </Card>
+  <Card title="Building custom templates" icon="paintbrush" href="/developer/custom-templates">
+    Create your own Fluent Forms PDF template.
+  </Card>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Configure default paper size, fonts, and colors.
+  </Card>
+</CardGroup>

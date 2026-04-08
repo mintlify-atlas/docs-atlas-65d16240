@@ -1,0 +1,172 @@
+---
+title: "Font management"
+description: "Download and manage fonts for PDF rendering in Fluent PDF."
+keywords: ["fonts", "mPDF", "font download", "unicode", "arabic", "CJK", "indic", "custom fonts", "font filter"]
+---
+
+Fluent PDF uses [mPDF](https://mpdf.github.io/) to generate PDFs. mPDF requires font files to be present on your server — it cannot use fonts installed in the browser or operating system.
+
+When you first install Fluent PDF, no fonts are downloaded yet. You need to trigger the download once from the admin UI before fonts become available in the font selector.
+
+## System requirements
+
+Before downloading fonts, confirm the following PHP extensions are active on your server. Fluent PDF checks these automatically and displays their status on the add-on page.
+
+| Extension | Purpose |
+|-----------|---------|
+| `mbstring` | Multibyte string handling |
+| `mbstring` MB Regex | Regex support for multibyte strings |
+| `gd` | Image rendering in PDFs |
+| `dom` | HTML/XML parsing (`DOMDocument`) |
+| `libxml` | XML processing dependency |
+
+<Warning>
+  If any of these extensions are missing, contact your hosting provider. Font rendering and PDF generation will fail without them.
+</Warning>
+
+## Downloading fonts
+
+<Steps>
+  <Step title="Open the Fluent PDF add-on">
+    Go to **Fluent Forms → Add-Ons** and click **Fluent PDF**.
+  </Step>
+  <Step title="Click Download Fonts">
+    If fonts have not been downloaded yet, the page shows a **Download Fonts** button. Click it to start the download.
+
+    Fluent PDF fetches font files in batches from the [`WPManageNinja/mpdf-core-fonts`](https://github.com/WPManageNinja/mpdf-core-fonts) GitHub repository.
+  </Step>
+  <Step title="Wait for completion">
+    The download runs in the background via AJAX. Once finished, the font selector in **Settings** becomes populated with all available font families.
+  </Step>
+</Steps>
+
+<Note>
+  Fonts are downloaded three files at a time. If the download fails partway through, reload the page and click **Download Fonts** again — already-downloaded files are skipped.
+</Note>
+
+## Directory structure
+
+On activation, Fluent PDF creates the following directory structure inside your WordPress uploads folder:
+
+```bash
+wp-content/uploads/FLUENT_PDF_TEMPLATES/
+├── fonts/        # Downloaded font files
+├── temp/         # Temporary files during PDF generation
+└── pdfCache/     # Cached PDF output
+```
+
+An `.htaccess` file with `deny from all` is placed in `FLUENT_PDF_TEMPLATES/` to prevent direct web access to font and cache files.
+
+<Info>
+  The base directory path can be changed using the `fluent/pdf_working_dir` filter. Individual subdirectories can be overridden with `fluent/pdf_temp_dir`, `fluent/pdf_cache_dir`, and `fluent/pdf_font_dir`.
+</Info>
+
+## Available fonts
+
+The font pack includes fonts for a wide range of scripts. Fonts are grouped by script category.
+
+<AccordionGroup>
+  <Accordion title="Unicode">
+    General-purpose fonts with broad Unicode character coverage, suitable for most Latin, Greek, and Cyrillic content.
+
+    | Font key | Display name |
+    |----------|-------------|
+    | `dejavusans` | DejaVu Sans |
+    | `dejavusanscondensed` | DejaVu Sans Condensed |
+    | `dejavuserif` | DejaVu Serif |
+    | `dejavuserifcondensed` | DejaVu Serif Condensed |
+    | `dejavusansmono` | DejaVu Sans Mono |
+    | `freesans` | Free Sans |
+    | `freeserif` | Free Serif |
+    | `freemono` | Free Mono |
+    | `mph2bdamase` | MPH 2B Damase |
+  </Accordion>
+
+  <Accordion title="Indic">
+    Fonts for Indic scripts.
+
+    | Font key | Display name |
+    |----------|-------------|
+    | `lohitkannada` | Lohit Kannada |
+    | `pothana2000` | Pothana2000 |
+  </Accordion>
+
+  <Accordion title="Arabic">
+    Right-to-left fonts for Arabic script. When using these fonts, set **Language direction** to **RTL** in [Global settings](/configuration/global-settings).
+
+    | Font key | Display name |
+    |----------|-------------|
+    | `xbriyaz` | XB Riyaz |
+    | `lateef` | Lateef |
+    | `kfgqpcuthmantahanaskh` | Bahif Uthman Taha (KFGQPC) |
+  </Accordion>
+
+  <Accordion title="Chinese, Japanese, Korean (CJK)">
+    Fonts for East Asian scripts.
+
+    | Font key | Display name |
+    |----------|-------------|
+    | `sun-exta` | Sun Ext |
+    | `unbatang` | Un Batang (Korean) |
+  </Accordion>
+
+  <Accordion title="Other scripts">
+    Fonts for a wide variety of additional writing systems.
+
+    | Font key | Display name | Script |
+    |----------|-------------|--------|
+    | `estrangeloedessa` | Estrangelo Edessa | Syriac |
+    | `kaputaunicode` | Kaputa | Sinhala |
+    | `abyssinicasil` | Abyssinica SIL | Ethiopic |
+    | `aboriginalsans` | Aboriginal Sans | Cherokee / Canadian |
+    | `jomolhari` | Jomolhari | Tibetan |
+    | `sundaneseunicode` | Sundanese | Sundanese |
+    | `taiheritagepro` | Tai Heritage Pro | Tai Viet |
+    | `aegyptus` | Aegyptus | Egyptian Hieroglyphs |
+    | `akkadian` | Akkadian | Cuneiform |
+    | `aegean` | Aegean | Greek (extended) |
+    | `quivira` | Quivira | Greek (extended) |
+    | `eeyekunicode` | Eeyek | Meetei Mayek |
+    | `lannaalif` | Lanna Alif | Tai Tham |
+    | `daibannasilbook` | Dai Banna SIL | New Tai Lue |
+    | `garuda` | Garuda | Thai |
+    | `khmeros` | Khmer OS | Khmer |
+    | `dhyana` | Dhyana | Lao |
+    | `tharlon` | TharLon | Myanmar / Burmese |
+    | `padaukbook` | Padauk Book | Myanmar / Burmese |
+    | `zawgyi-one` | Zawgyi One | Myanmar / Burmese |
+    | `ayar` | Ayar Myanmar | Myanmar / Burmese |
+    | `taameydavidclm` | Taamey David CLM | Hebrew |
+  </Accordion>
+</AccordionGroup>
+
+## Adding custom fonts
+
+Use the `fluent/pdf_font_list` filter to register additional fonts. The filter receives the full grouped font array and must return the modified array.
+
+```php
+add_filter('fluent/pdf_font_list', function (array $fonts): array {
+    $fonts['My Fonts'] = [
+        'mycustomfont' => 'My Custom Font',
+    ];
+
+    return $fonts;
+});
+```
+
+The array key is the font group label (shown as a heading in the dropdown). Each entry maps a font key (the filename stem, lowercase) to its display label.
+
+<Warning>
+  The font files themselves must be placed manually in the `fonts/` directory before they can be used. Fluent PDF only downloads the built-in font pack automatically.
+</Warning>
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Global settings" icon="gear" href="/configuration/global-settings">
+    Set the default font family, size, and colors for all PDFs.
+  </Card>
+  <Card title="Hooks and filters" icon="code" href="/developer/hooks-and-filters">
+    Full reference for all available WordPress filters including font-related hooks.
+  </Card>
+</CardGroup>

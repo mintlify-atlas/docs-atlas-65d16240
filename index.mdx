@@ -1,97 +1,60 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Fluent PDF"
+description: "Generate, customize, and deliver PDF documents from WordPress form submissions — with full control over layout, fonts, watermarks, and delivery."
 ---
 
-## Setting up
+Fluent PDF is a WordPress plugin that automatically generates PDF documents from [Fluent Forms](https://fluentforms.com) entries. Choose from built-in templates, customize appearance globally or per feed, and deliver PDFs as email attachments or downloadable links — all without writing a single line of code.
 
-Get your documentation site up and running in minutes.
+For developers, Fluent PDF exposes a PHP API and a full set of WordPress action/filter hooks so you can generate PDFs programmatically, build custom templates, and integrate with any third-party plugin.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="plug" href="/installation">
+    Install and activate Fluent PDF on your WordPress site in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Create your first PDF feed and generate a PDF from a form submission.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    Configure per-form PDF feeds with custom templates and appearance settings.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Developer API" icon="code" href="/developer/api-reference">
+    Generate PDFs programmatically using the PHP API class.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you can do
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Set default paper size, orientation, fonts, and colors across all PDFs.
+  </Card>
+  <Card title="Font management" icon="font" href="/configuration/fonts">
+    Download built-in font packs or upload custom TTF fonts for multilingual PDFs.
+  </Card>
+  <Card title="Invoice template" icon="receipt" href="/fluent-forms/invoice-template">
+    Automatically generate payment receipts for Fluent Forms payment entries.
+  </Card>
+  <Card title="Email attachments" icon="envelope" href="/fluent-forms/email-attachments">
+    Attach generated PDFs to form notification emails automatically.
+  </Card>
+  <Card title="Shortcodes" icon="brackets-curly" href="/fluent-forms/shortcodes">
+    Embed PDF download links in confirmation messages and notification emails.
+  </Card>
+  <Card title="Hooks &amp; filters" icon="filter" href="/developer/hooks-and-filters">
+    Extend Fluent PDF with WordPress actions and filters.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Get started in three steps
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Steps>
+  <Step title="Install the plugin">
+    Upload and activate **Fluent PDF** from the WordPress admin. See [installation](/installation) for details.
+  </Step>
+  <Step title="Download fonts">
+    Navigate to **Fluent Forms → Add-Ons → Fluent PDF** and click **Download Fonts** to install the required font pack. Then save your global settings.
+  </Step>
+  <Step title="Create a PDF feed">
+    Open any Fluent Form, go to **Settings → PDF Feeds**, and create a new feed. Pick a template, customize the content and appearance, and save. Your PDF will be generated automatically on every form submission.
+  </Step>
+</Steps>

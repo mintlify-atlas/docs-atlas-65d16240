@@ -1,0 +1,411 @@
+---
+title: 'Building custom templates'
+description: 'Create and register your own PDF template for Fluent Forms by extending TemplateManager and hooking into the template filter.'
+---
+
+Fluent PDF ships with a General template and an Invoice template. You can register your own templates to get a fully custom layout, brand identity, or data structure — all controlled from the Fluent Forms PDF feed settings UI.
+
+<Note>
+  Custom templates for Fluent Forms require the Fluent Forms plugin. For standalone PDF generation without Fluent Forms, use the [abstract `PdfBuilder` class](#standalone-pdf-generation-without-fluent-forms) or the [Pdf API class](/developer/api-reference) directly.
+</Note>
+
+---
+
+## Overview
+
+Building a custom template involves two steps:
+
+1. Create a PHP class that extends `TemplateManager` and implements the two abstract methods plus the optional `getDefaultSettings()` method.
+2. Register the class via the `fluentform/pdf_templates` filter.
+
+---
+
+## Step 1 — Create the template class
+
+Your class must extend `FluentPdf\Modules\FluentForms\Templates\TemplateManager`, which lives at `Modules/FluentForms/Templates/TemplateManager.php`.
+
+`TemplateManager` handles directory setup, the mPDF instance, CSS injection, watermark rendering, RTL support, and caching. You must implement two abstract methods and may optionally implement `getDefaultSettings()`.
+
+### Methods to implement
+
+<AccordionGroup>
+  <Accordion title="getDefaultSettings( $form ): array  [optional]">
+    Returns the initial settings saved when a user creates a new feed using your template. These values pre-fill the feed editor. This method is **not** declared abstract in `TemplateManager` — you should implement it if you want sensible defaults pre-filled when a feed is created with your template.
+
+    ```php
+    public function getDefaultSettings( $form ): array
+    {
+        return [
+            'header' => '<h2>' . esc_html( $form->title ) . '</h2>',
+            'footer' => '<p style="text-align:center;">{DATE j-m-Y} — Page {PAGENO}/{nbpg}</p>',
+            'body'   => '{all_data}',
+        ];
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="getSettingsFields(): array">
+    Returns the field definitions that build the feed editor UI. Each element is an associative array describing one editable field.
+
+    **Field keys:**
+
+    | Key | Type | Description |
+    |-----|------|-------------|
+    | `key` | `string` | Settings key where the value is stored. |
+    | `label` | `string` | Human-readable label in the admin UI. |
+    | `component` | `string` | UI component type (see [field components](#field-components) below). |
+    | `tips` | `string` | Tooltip text shown next to the label. |
+    | `inline_tip` | `string` | Hint text rendered below the field. |
+    | `options` | `array` | Key → label pairs for `dropdown` and `radio_choice` components. |
+    | `placeholder` | `string` | Placeholder text for `text` inputs. |
+
+    ```php
+    public function getSettingsFields(): array
+    {
+        return [
+            [
+                'key'       => 'header',
+                'label'     => __( 'Header content', 'my-plugin' ),
+                'tips'      => __( 'HTML shown at the top of every page.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'body',
+                'label'     => __( 'Body content', 'my-plugin' ),
+                'tips'      => __( 'Main PDF content. Supports shortcodes.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'footer',
+                'label'     => __( 'Footer content', 'my-plugin' ),
+                'tips'      => __( 'HTML shown at the bottom of every page.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'show_logo',
+                'label'     => __( 'Show logo', 'my-plugin' ),
+                'component' => 'radio_choice',
+                'options'   => [
+                    'yes' => __( 'Yes', 'my-plugin' ),
+                    'no'  => __( 'No', 'my-plugin' ),
+                ],
+            ],
+            [
+                'key'       => 'logo',
+                'label'     => __( 'Logo image', 'my-plugin' ),
+                'component' => 'image_widget',
+            ],
+            [
+                'key'       => 'accent_hex',
+                'label'     => __( 'Brand color', 'my-plugin' ),
+                'component' => 'color_picker',
+            ],
+        ];
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="generatePdf( $submissionId, $feed, $outPut, $fileName ): void">
+    Generates and outputs the PDF for a given form submission. This method is called by the plugin when a user views, downloads, or attaches a PDF via email.
+
+    The inherited `pdfBuilder()` helper method handles the heavy lifting: it instantiates mPDF, applies appearance settings, sets watermarks, injects CSS, and outputs the file.
+
+    ```php
+    public function generatePdf( $submissionId, $feed, $outPut = 'I', $fileName = '' ): void
+    {
+        $settings   = $feed['settings'];
+        $appearance = $feed['appearance'];
+
+        // Load submission data
+        $submission = wpFluent()
+            ->table( 'fluentform_submissions' )
+            ->where( 'id', $submissionId )
+            ->where( 'status', '!=', 'trashed' )
+            ->first();
+
+        if ( ! $submission ) {
+            return;
+        }
+
+        $formData = json_decode( $submission->response, true );
+
+        // Parse Fluent Forms shortcodes in settings
+        $settings = \FluentForm\App\Services\FormBuilder\ShortCodeParser::parse(
+            $settings,
+            $submissionId,
+            $formData,
+            null,
+            false,
+            'pdfFeed'
+        );
+
+        // Set header HTML (used by pdfBuilder)
+        if ( ! empty( $settings['header'] ) ) {
+            $this->headerHtml = $settings['header'];
+        }
+
+        $body   = $settings['body'];
+        $footer = $settings['footer'] ?? '';
+
+        // Allow other plugins to modify the body
+        $form = wpFluent()->table( 'fluentform_forms' )->find( $submission->form_id );
+        $body = apply_filters( 'fluentform/pdf_body_parse', $body, $submissionId, $formData, $form );
+
+        // Derive filename from feed name if not provided
+        if ( ! $fileName ) {
+            $fileName = \FluentForm\App\Services\FormBuilder\ShortCodeParser::parse(
+                $feed['name'],
+                $submissionId,
+                $formData
+            );
+            $fileName = sanitize_title( $fileName, 'pdf-file', 'display' );
+        }
+
+        // Render the PDF
+        $this->pdfBuilder( $fileName, $feed, $body, $footer, $outPut );
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Field components
+
+The `component` key in `getSettingsFields()` controls which UI element renders in the feed editor.
+
+| Component | Description |
+|-----------|-------------|
+| `wp-editor` | Full WordPress TinyMCE rich-text editor. Best for header, body, and footer fields. |
+| `text` | Single-line text input. |
+| `number` | Numeric input. |
+| `dropdown` | Select box. Requires an `options` array (`value => label`). |
+| `radio_choice` | Radio button group. Requires an `options` array (`value => label`). |
+| `color_picker` | Colour picker with hex input. |
+| `image_widget` | WordPress media library image picker. Stores the image URL. |
+| `value_text` | Read-only text display. Useful for showing computed values. |
+| `value_textarea` | Read-only textarea. Useful for showing shortcodes. |
+
+---
+
+## Step 2 — Register the template
+
+Use the `fluentform/pdf_templates` filter to register your class. The filter receives the current templates array and the form object.
+
+```php
+add_filter( 'fluentform/pdf_templates', function ( array $templates, $form ) {
+    $templates['my_branded'] = [
+        'name'    => 'My Branded Template',
+        'class'   => '\MyPlugin\PdfTemplates\MyBrandedTemplate',
+        'key'     => 'my_branded',
+        'preview' => plugin_dir_url( __FILE__ ) . 'assets/template-preview.png',
+    ];
+    return $templates;
+}, 10, 2 );
+```
+
+The template will now appear in the template picker when creating a new PDF feed.
+
+---
+
+## Complete working example
+
+Below is a minimal but fully working custom template.
+
+```php
+<?php
+// File: my-plugin/PdfTemplates/MyBrandedTemplate.php
+
+namespace MyPlugin\PdfTemplates;
+
+use FluentForm\App\Services\FormBuilder\ShortCodeParser;
+use FluentPdf\Modules\FluentForms\Templates\TemplateManager;
+
+class MyBrandedTemplate extends TemplateManager
+{
+    public function getDefaultSettings( $form ): array
+    {
+        return [
+            'header'  => '<h2 style="color:#1a56db;">' . esc_html( $form->title ) . '</h2>',
+            'body'    => '{all_data}',
+            'footer'  => '<p style="text-align:center;">Page {PAGENO} of {nbpg}</p>',
+            'show_logo' => 'yes',
+        ];
+    }
+
+    public function getSettingsFields(): array
+    {
+        return [
+            [
+                'key'       => 'header',
+                'label'     => __( 'Header content', 'my-plugin' ),
+                'tips'      => __( 'Rendered at the top of every page.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'body',
+                'label'     => __( 'Body content', 'my-plugin' ),
+                'tips'      => __( 'Main document content. Supports Fluent Forms shortcodes.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'footer',
+                'label'     => __( 'Footer content', 'my-plugin' ),
+                'tips'      => __( 'Rendered at the bottom of every page.', 'my-plugin' ),
+                'component' => 'wp-editor',
+            ],
+            [
+                'key'       => 'show_logo',
+                'label'     => __( 'Show logo', 'my-plugin' ),
+                'component' => 'radio_choice',
+                'options'   => [
+                    'yes' => __( 'Yes', 'my-plugin' ),
+                    'no'  => __( 'No', 'my-plugin' ),
+                ],
+            ],
+            [
+                'key'       => 'logo',
+                'label'     => __( 'Logo image', 'my-plugin' ),
+                'component' => 'image_widget',
+            ],
+        ];
+    }
+
+    public function generatePdf( $submissionId, $feed, $outPut = 'I', $fileName = '' ): void
+    {
+        $settings = $feed['settings'];
+
+        $submission = wpFluent()
+            ->table( 'fluentform_submissions' )
+            ->where( 'id', $submissionId )
+            ->where( 'status', '!=', 'trashed' )
+            ->first();
+
+        if ( ! $submission ) {
+            return;
+        }
+
+        $formData = json_decode( $submission->response, true );
+
+        // Parse Fluent Forms shortcodes in settings values
+        $settings = ShortCodeParser::parse( $settings, $submissionId, $formData, null, false, 'pdfFeed' );
+
+        // Inject a logo into the header when enabled
+        if ( ( $settings['show_logo'] ?? 'no' ) === 'yes' && ! empty( $settings['logo'] ) ) {
+            $logoUrl = esc_url( $settings['logo'] );
+            $logoHtml = '<img src="' . $logoUrl . '" alt="Logo" style="height:40px;" />';
+            $this->headerHtml = $logoHtml . ( $settings['header'] ?? '' );
+        } elseif ( ! empty( $settings['header'] ) ) {
+            $this->headerHtml = $settings['header'];
+        }
+
+        $body   = $settings['body']   ?? '';
+        $footer = $settings['footer'] ?? '';
+
+        // Allow third-party modification of the body HTML
+        $form = wpFluent()->table( 'fluentform_forms' )->find( $submission->form_id );
+        $body = apply_filters( 'fluentform/pdf_body_parse', $body, $submissionId, $formData, $form );
+
+        if ( ! $fileName ) {
+            $fileName = ShortCodeParser::parse( $feed['name'], $submissionId, $formData );
+            $fileName = sanitize_title( $fileName, 'pdf-file', 'display' );
+        }
+
+        $this->pdfBuilder( $fileName, $feed, $body, $footer, $outPut );
+    }
+}
+```
+
+**Register the template:**
+
+```php
+// File: my-plugin/my-plugin.php (or functions.php)
+
+add_filter( 'fluentform/pdf_templates', function ( array $templates, $form ) {
+    $templates['my_branded'] = [
+        'name'    => 'My Branded Template',
+        'class'   => '\MyPlugin\PdfTemplates\MyBrandedTemplate',
+        'key'     => 'my_branded',
+        'preview' => plugin_dir_url( __FILE__ ) . 'assets/preview.png',
+    ];
+    return $templates;
+}, 10, 2 );
+```
+
+---
+
+## Standalone PDF generation without Fluent Forms
+
+For cases where you need a reusable PDF class without any Fluent Forms dependency, extend the abstract `FluentPdf\Classes\Abstract\PdfBuilder` class (`Classes/Abstract/PdfBuilder.php`).
+
+Implement the three abstract methods — `header()`, `body()`, and `footer()` — that each return an HTML string. Call `generatePdf()` to render and output the document.
+
+```php
+<?php
+
+namespace MyPlugin;
+
+use FluentPdf\Classes\Abstract\PdfBuilder;
+
+class MyReportPdf extends PdfBuilder
+{
+    protected array $data;
+
+    public function __construct( array $data )
+    {
+        parent::__construct();
+        $this->data = $data;
+    }
+
+    public function header(): string
+    {
+        return '<h2>My Report</h2>';
+    }
+
+    public function body(): string
+    {
+        $rows = '';
+        foreach ( $this->data as $item ) {
+            $rows .= '<tr><td>' . esc_html( $item['label'] ) . '</td>'
+                   . '<td>' . esc_html( $item['value'] ) . '</td></tr>';
+        }
+        return '<table border="1" cellpadding="6"><tr><th>Label</th><th>Value</th></tr>'
+             . $rows . '</table>';
+    }
+
+    public function footer(): string
+    {
+        return '<p style="text-align:center;">Generated on ' . date( 'Y-m-d' ) . '</p>';
+    }
+}
+
+// Usage:
+$pdf = new \MyPlugin\MyReportPdf([
+    ['label' => 'Revenue', 'value' => '$12,500'],
+    ['label' => 'Expenses', 'value' => '$4,200'],
+]);
+$pdf->generatePdf(); // Outputs inline to the browser
+```
+
+<Tip>
+  The abstract `PdfBuilder` uses the same underlying `FluentPdf\Classes\PdfBuilder::generatePdf()` method as the action-hook approach, so global plugin settings (paper size, font, etc.) are applied automatically.
+</Tip>
+
+---
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Hooks and filters" icon="filter" href="/developer/hooks-and-filters">
+    Full reference for fluentform/pdf_templates and other hooks.
+  </Card>
+  <Card title="PHP API reference" icon="brackets-curly" href="/developer/api-reference">
+    Direct access to the Pdf class for advanced use cases.
+  </Card>
+  <Card title="PDF feeds" icon="file-pdf" href="/fluent-forms/pdf-feeds">
+    How to configure PDF feeds in the Fluent Forms UI.
+  </Card>
+  <Card title="Templates" icon="layout-template" href="/fluent-forms/templates">
+    Overview of the built-in template options.
+  </Card>
+</CardGroup>

@@ -1,0 +1,64 @@
+---
+title: "Introduction"
+description: "Fluent PDF generates, customizes, and delivers PDF documents from WordPress form submissions — no code required."
+---
+
+Fluent PDF is a WordPress plugin that turns [Fluent Forms](https://fluentforms.com) entries into PDF documents. When someone submits a form, Fluent PDF can automatically generate a styled PDF, attach it to a notification email, and make it available as a download link — all configured through the WordPress admin.
+
+For developers, Fluent PDF exposes a PHP action hook so you can generate PDFs programmatically from any plugin or theme, and a filter-based API for registering custom templates.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Automated PDF generation" icon="file-pdf">
+    Generate PDFs automatically on every form submission using configurable PDF feeds — no manual steps needed.
+  </Card>
+  <Card title="Customizable templates" icon="palette">
+    Control fonts, colors, paper size, orientation, watermarks, and page headers and footers globally or per feed.
+  </Card>
+  <Card title="Invoice template" icon="receipt">
+    Automatically produce payment receipts for Fluent Forms entries that include a payment field.
+  </Card>
+  <Card title="Email attachments" icon="envelope">
+    Attach generated PDFs to any Fluent Forms notification email with a single checkbox.
+  </Card>
+  <Card title="Download links via shortcodes" icon="link">
+    Embed PDF download links in confirmation messages and emails using `{pdf.download_link}` shortcodes.
+  </Card>
+  <Card title="RTL and multilingual support" icon="globe">
+    Full support for right-to-left languages such as Arabic and Hebrew, plus custom font uploads for any script.
+  </Card>
+  <Card title="Password protection" icon="lock">
+    Optionally require a password to open any generated PDF.
+  </Card>
+  <Card title="Conditional generation" icon="filter">
+    Use Fluent Forms Pro conditional logic to generate PDFs only when specific conditions are met.
+  </Card>
+</CardGroup>
+
+## Supported integrations
+
+Fluent PDF is built around **Fluent Forms** and integrates directly with its form settings, notification system, and submission viewer. All PDF configuration — feeds, templates, email attachments — lives inside the Fluent Forms admin UI.
+
+For other plugins, Fluent PDF exposes a `do_action` hook that any PHP code can call to generate a PDF from arbitrary HTML content. See [Generating PDFs programmatically](/developer/generating-pdfs-programmatically) for details.
+
+## Requirements
+
+| Requirement | Minimum version |
+|---|---|
+| WordPress | 5.0 |
+| PHP | 7.1 |
+| Fluent Forms | Any current release |
+
+Your PHP installation must have the following extensions enabled: **mbstring**, **GD**, **DOM**, and **libxml**. Most managed WordPress hosts include these by default. If any extension is missing, the Fluent PDF settings page will show a system status warning with instructions.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="plug" href="/installation">
+    Install and activate Fluent PDF on your WordPress site.
+  </Card>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Create your first PDF feed and generate a PDF from a test submission.
+  </Card>
+</CardGroup>

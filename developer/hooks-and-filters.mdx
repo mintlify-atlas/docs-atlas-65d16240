@@ -1,0 +1,486 @@
+---
+title: 'Hooks and filters'
+description: 'All WordPress actions and filters exposed by Fluent PDF, with usage examples and parameter documentation.'
+---
+
+Fluent PDF follows the standard WordPress hook system. Use the actions and filters below to extend the plugin's behavior, add custom templates, modify generated content, and integrate PDF generation into any other plugin or theme.
+
+---
+
+## Actions
+
+### `fluent_pdf_make`
+
+Generates a complete PDF from any WordPress plugin or theme. This is the simplest way to create a PDF programmatically — no class instantiation required.
+
+Registered in `FluentPdf\Classes\PdfBuilder::register()` at priority 10.
+
+**Signature:**
+
+```php
+do_action(
+    'fluent_pdf_make',
+    array  $content,
+    string $filename    = 'document.pdf',
+    string $outputType  = null,
+    array  $config      = [],
+    array  $extraConfig = []
+);
+```
+
+<ParamField body="content" type="array" required>
+  Associative array with the document sections:
+
+  | Key | Type | Description |
+  |-----|------|-------------|
+  | `header` | `string` | HTML rendered as the page header on every page. |
+  | `body` | `string` | HTML for the main document body. |
+  | `footer` | `string` | HTML rendered as the page footer on every page. |
+</ParamField>
+
+<ParamField body="filename" type="string" default="document.pdf">
+  The output filename. Used as the download name or file path (for `'F'` output type).
+</ParamField>
+
+<ParamField body="outputType" type="string" default="null">
+  Delivery method: `'I'` (inline browser), `'D'` (download), `'S'` (string), `'F'` (file). Defaults to `'I'`.
+</ParamField>
+
+<ParamField body="config" type="array" default="[]">
+  mPDF constructor config: `format`, `orientation`, `mode`, and any other mPDF option.
+</ParamField>
+
+<ParamField body="extraConfig" type="array" default="[]">
+  Extra options: `password`, `direction`, `htmlHeader`, `watermark_image`, `watermark_text`.
+</ParamField>
+
+**Example:**
+
+```php
+do_action( 'fluent_pdf_make', [
+    'header' => '<h1>Hello header</h1>',
+    'footer' => '<p>Hello footer</p>',
+    'body'   => '<p>Hello content</p>',
+] );
+```
+
+**Full example with all parameters:**
+
+```php
+do_action(
+    'fluent_pdf_make',
+    [
+        'header' => '<h2>Company Report</h2>',
+        'body'   => '<p>Report content goes here.</p>',
+        'footer' => '<p style="text-align:center;">Page {PAGENO} of {nbpg}</p>',
+    ],
+    'company-report.pdf',
+    'D',                          // force download
+    [ 'format' => 'A4', 'orientation' => 'L' ],
+    [ 'watermark_text' => [ 'text' => 'CONFIDENTIAL', 'alpha' => 0.1 ] ]
+);
+```
+
+---
+
+### `fluent_pdf_loaded`
+
+Fires after Fluent PDF finishes booting (inside the `plugins_loaded` callback). Hook here to register extensions, custom templates, or any code that depends on the plugin being fully initialised.
+
+```php
+add_action( 'fluent_pdf_loaded', function () {
+    // Safe to use Fluent PDF classes here
+    do_something_with_fluent_pdf();
+} );
+```
+
+---
+
+### `fluent_pdf_cleanup_tmp_dir`
+
+Triggers a cleanup of the plugin's temp and PDF cache directories. Files older than 6 hours are deleted. Schedule this with `wp_schedule_event()` or call it after a PDF-heavy batch process.
+
+```php
+// Trigger cleanup manually
+do_action( 'fluent_pdf_cleanup_tmp_dir' );
+
+// Schedule it to run twice daily
+add_action( 'init', function () {
+    if ( ! wp_next_scheduled( 'my_pdf_cleanup_cron' ) ) {
+        wp_schedule_event( time(), 'twicedaily', 'my_pdf_cleanup_cron' );
+    }
+} );
+add_action( 'my_pdf_cleanup_cron', function () {
+    do_action( 'fluent_pdf_cleanup_tmp_dir' );
+} );
+```
+
+---
+
+## Filters
+
+### `fluentform/pdf_templates`
+
+Add or modify the list of available PDF templates shown in the Fluent Forms PDF feed settings.
+
+**Signature:**
+
+```php
+apply_filters( 'fluentform/pdf_templates', array $templates, object $form );
+```
+
+<ParamField body="templates" type="array" required>
+  Associative array of templates keyed by a unique slug. Each entry must contain:
+
+  | Key | Type | Description |
+  |-----|------|-------------|
+  | `name` | `string` | Human-readable template name shown in the UI. |
+  | `class` | `string` | Fully qualified class name (must extend `TemplateManager`). |
+  | `key` | `string` | Unique slug matching the array key. |
+  | `preview` | `string` | URL of a preview image shown in the template picker. |
+</ParamField>
+
+<ParamField body="form" type="object" required>
+  The Fluent Forms form object. Use it to conditionally register templates (e.g., only for payment forms).
+</ParamField>
+
+**Example:**
+
+```php
+add_filter( 'fluentform/pdf_templates', function ( array $templates, $form ) {
+    $templates['my_custom'] = [
+        'name'    => 'My Custom Template',
+        'class'   => '\MyPlugin\PdfTemplates\MyCustomTemplate',
+        'key'     => 'my_custom',
+        'preview' => plugin_dir_url( __FILE__ ) . 'assets/preview.png',
+    ];
+    return $templates;
+}, 10, 2 );
+```
+
+---
+
+### `fluentform/pdf_body_parse`
+
+Modify the HTML body content of a PDF just before it is rendered. Use this to perform token replacement, strip elements, or inject dynamic data based on the submission.
+
+**Signature:**
+
+```php
+apply_filters(
+    'fluentform/pdf_body_parse',
+    string $content,
+    int    $entryId,
+    array  $formData,
+    object $form
+);
+```
+
+<ParamField body="content" type="string" required>
+  The HTML body string about to be written to the PDF.
+</ParamField>
+
+<ParamField body="entryId" type="integer" required>
+  The Fluent Forms submission ID.
+</ParamField>
+
+<ParamField body="formData" type="array" required>
+  The decoded submission data array.
+</ParamField>
+
+<ParamField body="form" type="object" required>
+  The Fluent Forms form object.
+</ParamField>
+
+**Returns:** `string` — the modified HTML body.
+
+**Example:**
+
+```php
+add_filter( 'fluentform/pdf_body_parse', function ( $content, $entryId, $formData, $form ) {
+    // Replace a custom token with a value from the submission
+    $name = $formData['name'] ?? 'Valued Customer';
+    return str_replace( '{{customer_name}}', esc_html( $name ), $content );
+}, 10, 4 );
+```
+
+---
+
+### `fluent/pdf_working_dir`
+
+Override the base working directory where Fluent PDF stores all its generated files, fonts, and caches. The default is `{uploads}/FLUENT_PDF_TEMPLATES`.
+
+**Signature:**
+
+```php
+apply_filters( 'fluent/pdf_working_dir', string $path );
+```
+
+<ParamField body="path" type="string" required>
+  Absolute filesystem path to the desired working directory.
+</ParamField>
+
+**Returns:** `string` — the working directory path.
+
+```php
+add_filter( 'fluent/pdf_working_dir', function ( $path ) {
+    return WP_CONTENT_DIR . '/fluent-pdf';
+} );
+```
+
+---
+
+### `fluent/pdf_temp_dir`
+
+Override the path to the temp directory used during PDF generation (font cache data, mPDF scratch files). The default is `{working_dir}/temp`.
+
+**Signature:**
+
+```php
+apply_filters( 'fluent/pdf_temp_dir', string $path );
+```
+
+<ParamField body="path" type="string" required>
+  Absolute filesystem path to the desired temp directory.
+</ParamField>
+
+**Returns:** `string`
+
+```php
+add_filter( 'fluent/pdf_temp_dir', function ( $path ) {
+    return sys_get_temp_dir() . '/fluent-pdf-tmp';
+} );
+```
+
+---
+
+### `fluent/pdf_cache_dir`
+
+Override the directory where generated PDF files are cached for email attachments. The default is `{working_dir}/pdfCache`.
+
+**Signature:**
+
+```php
+apply_filters( 'fluent/pdf_cache_dir', string $path );
+```
+
+<ParamField body="path" type="string" required>
+  Absolute filesystem path to the desired cache directory.
+</ParamField>
+
+**Returns:** `string`
+
+```php
+add_filter( 'fluent/pdf_cache_dir', function ( $path ) {
+    $upload_dir = wp_upload_dir();
+    return $upload_dir['basedir'] . '/my-pdf-cache';
+} );
+```
+
+---
+
+### `fluent/pdf_font_dir`
+
+Override the directory where custom TrueType fonts (`.ttf`) are stored and loaded from. The default is `{working_dir}/fonts`.
+
+**Signature:**
+
+```php
+apply_filters( 'fluent/pdf_font_dir', string $path );
+```
+
+<ParamField body="path" type="string" required>
+  Absolute filesystem path to the desired font directory.
+</ParamField>
+
+**Returns:** `string`
+
+```php
+add_filter( 'fluent/pdf_font_dir', function ( $path ) {
+    return get_theme_file_path( 'fonts/pdf' );
+} );
+```
+
+---
+
+### `fluent/pdf_font_list`
+
+Add or remove fonts from the list available in the Fluent PDF admin UI. Fonts are grouped by script category.
+
+**Signature:**
+
+```php
+apply_filters( 'fluent/pdf_font_list', array $fonts );
+```
+
+<ParamField body="fonts" type="array" required>
+  Nested associative array. Top-level keys are group labels (e.g., `'Unicode'`, `'Arabic'`). Each group maps font slugs to display names. The font slug must match the `.ttf` filename (without extension) placed in the font directory.
+</ParamField>
+
+**Returns:** `array`
+
+```php
+add_filter( 'fluent/pdf_font_list', function ( array $fonts ) {
+    $fonts['Custom'] = [
+        'myfont-regular' => 'My Font Regular',
+        'myfont-bold'    => 'My Font Bold',
+    ];
+    return $fonts;
+} );
+```
+
+<Note>
+  After adding a font slug here, place the corresponding `.ttf` file in the font directory (see `fluent/pdf_font_dir`) and ensure mPDF's font configuration maps the slug to the file. See the [fonts configuration](/configuration/fonts) page for the full setup process.
+</Note>
+
+---
+
+### `fluentform/mpdf_config`
+
+Modify the mPDF constructor configuration array before the mPDF instance is created for a Fluent Forms feed. Use this to set advanced mPDF options not exposed through the feed UI.
+
+**Signature:**
+
+```php
+apply_filters( 'fluentform/mpdf_config', array $mpdfConfig );
+```
+
+<ParamField body="mpdfConfig" type="array" required>
+  The full mPDF constructor config array. Includes keys such as `mode`, `format`, `orientation`, `margin_header`, `margin_footer`, `fontDir`, `tempDir`, `default_font`, and any mPDF option. Defaults are set by `TemplateManager::getGenerator()`.
+</ParamField>
+
+**Returns:** `array` — the modified config array.
+
+```php
+add_filter( 'fluentform/mpdf_config', function ( array $config ) {
+    // Increase top margin for all Fluent Forms PDFs
+    $config['margin_top'] = 20;
+    return $config;
+} );
+```
+
+<Note>
+  The legacy filter `fluentform_mpdf_config` is still accepted for backward compatibility but is deprecated. Use `fluentform/mpdf_config` in new code.
+</Note>
+
+---
+
+### `fluentform/pdf_generator_css`
+
+Modify the CSS injected into every Fluent Forms PDF body. This CSS controls font color, font size, table borders, heading colors, accent color, RTL table alignment, and image alignment classes.
+
+**Signature:**
+
+```php
+apply_filters( 'fluentform/pdf_generator_css', string $css, array $appearance );
+```
+
+<ParamField body="css" type="string" required>
+  The full CSS string built from the feed's appearance settings (font color, accent color, heading color, font size, etc.).
+</ParamField>
+
+<ParamField body="appearance" type="array" required>
+  The feed's appearance settings array (same keys as the feed Appearance tab: `font_color`, `accent_color`, `heading_color`, `font_size`, etc.).
+</ParamField>
+
+**Returns:** `string` — the modified CSS.
+
+```php
+add_filter( 'fluentform/pdf_generator_css', function ( string $css, array $appearance ) {
+    // Add a custom body background color
+    $css .= ' body { background-color: #fafafa; }';
+    return $css;
+}, 10, 2 );
+```
+
+<Note>
+  The legacy filter `fluentform_pdf_generator_css` is still accepted for backward compatibility but is deprecated. Use `fluentform/pdf_generator_css` in new code.
+</Note>
+
+---
+
+### `fluentform/pdf_watermark_image_size`
+
+Controls the size parameter passed to mPDF's `SetWatermarkImage()` for image watermarks on Fluent Forms PDFs.
+
+**Signature:**
+
+```php
+apply_filters( 'fluentform/pdf_watermark_image_size', string $size, int $feedId );
+```
+
+<ParamField body="size" type="string" default="'D'">
+  The mPDF watermark image size parameter. `'D'` uses the image's default dimensions; other valid mPDF values may also be used.
+</ParamField>
+
+<ParamField body="feedId" type="integer" required>
+  The ID of the PDF feed being rendered.
+</ParamField>
+
+**Returns:** `string`
+
+---
+
+### `fluentform/pdf_watermark_image_position`
+
+Controls the position parameter passed to mPDF's `SetWatermarkImage()` for image watermarks on Fluent Forms PDFs.
+
+**Signature:**
+
+```php
+apply_filters( 'fluentform/pdf_watermark_image_position', string $position, int $feedId );
+```
+
+<ParamField body="position" type="string" default="'F'">
+  The mPDF watermark image position parameter. `'F'` centers the watermark on the page.
+</ParamField>
+
+<ParamField body="feedId" type="integer" required>
+  The ID of the PDF feed being rendered.
+</ParamField>
+
+**Returns:** `string`
+
+---
+
+### `fluent_pdf_hide_menu`
+
+Control whether the Fluent PDF top-level admin menu item is shown. Return `true` to hide it. Default is `false` (menu is visible).
+
+**Signature:**
+
+```php
+apply_filters( 'fluent_pdf_hide_menu', bool $hide );
+```
+
+<ParamField body="hide" type="boolean" default="false">
+  `true` to hide the admin menu; `false` to show it.
+</ParamField>
+
+**Returns:** `bool`
+
+```php
+// Hide the menu for all non-admin users
+add_filter( 'fluent_pdf_hide_menu', function ( $hide ) {
+    return ! current_user_can( 'manage_options' );
+} );
+```
+
+---
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="PHP API reference" icon="brackets-curly" href="/developer/api-reference">
+    Full reference for the FluentPdf\API\Pdf class.
+  </Card>
+  <Card title="Generating PDFs programmatically" icon="code" href="/developer/generating-pdfs-programmatically">
+    Step-by-step guide to generating PDFs from PHP.
+  </Card>
+  <Card title="Building custom templates" icon="paintbrush" href="/developer/custom-templates">
+    Register a custom PDF template for Fluent Forms.
+  </Card>
+  <Card title="Fonts" icon="font" href="/configuration/fonts">
+    Download and configure fonts for PDF generation.
+  </Card>
+</CardGroup>

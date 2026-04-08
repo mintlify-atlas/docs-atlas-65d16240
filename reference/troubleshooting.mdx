@@ -1,0 +1,240 @@
+---
+title: "Troubleshooting"
+description: "Solutions to common issues with Fluent PDF, including font problems, PHP extension errors, PDF generation failures, and more."
+---
+
+<AccordionGroup>
+
+  <Accordion title="'Fonts not downloaded' warning in admin">
+    If you see a yellow notice that Fluent PDF requires fonts to be downloaded, the plugin has not yet fetched the required font files from the internet.
+
+    **To resolve:**
+
+    1. Go to **Fluent Forms → Add-Ons** in your WordPress admin.
+    2. Find the **Fluent PDF** add-on and click into its settings page.
+    3. Click **Download Fonts** and wait for the process to complete.
+
+    The notice will disappear automatically once the fonts directory contains at least one `.ttf` file.
+  </Accordion>
+
+  <Accordion title="Fonts won't download">
+    Font files are fetched from GitHub raw content at download time. If the download fails, there are two likely causes:
+
+    **Outbound HTTP requests blocked**
+
+    Your server must be able to reach external URLs. Ask your web host to confirm that outbound HTTP requests to `raw.githubusercontent.com` are allowed. Some firewalls or security configurations block all external connections from the PHP process.
+
+    **Write permissions on the uploads directory**
+
+    Fluent PDF stores fonts in `wp-content/uploads/FLUENT_PDF_TEMPLATES/fonts/`. The web server process (e.g. `www-data`) must have write access to that directory tree.
+
+    ```bash
+    # Check ownership and permissions
+    ls -la wp-content/uploads/FLUENT_PDF_TEMPLATES/
+    ```
+
+    If needed, adjust permissions:
+
+    ```bash
+    chmod -R 755 wp-content/uploads/FLUENT_PDF_TEMPLATES/
+    chown -R www-data:www-data wp-content/uploads/FLUENT_PDF_TEMPLATES/
+    ```
+
+    Contact your web host if you are on a managed server and cannot change file permissions directly.
+  </Accordion>
+
+  <Accordion title="Wrong font rendering or garbled characters">
+    Each font only covers a subset of Unicode character ranges. If characters appear as boxes or question marks, the selected font does not support that script.
+
+    **Steps to fix:**
+
+    1. Navigate to **Fluent Forms → Add-Ons → Fluent PDF → Global Settings**.
+    2. Under **Font Family**, choose a font that supports your language:
+
+    | Language group | Recommended fonts |
+    |---|---|
+    | Arabic | XB Riyaz, Lateef, Bahif Uthman Taha |
+    | Hebrew | Taamey David CLM |
+    | Chinese / Japanese / Korean | Sun Ext, Un Batang |
+    | Thai | Garuda |
+    | Khmer | Khmer OS |
+
+    3. Also ensure **Language Direction** is set correctly (see the RTL accordion below).
+
+    <Tip>
+      The Font Family dropdown in Global Settings groups fonts by script family, making it easier to find the right one for your language.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="PHP extension errors in system status">
+    Fluent PDF relies on several PHP extensions to generate PDFs. The **System Status** panel on the Fluent PDF settings page shows a green or red indicator for each required extension.
+
+    The following extensions are checked:
+
+    | Extension | What it does |
+    |---|---|
+    | **MBString** (`mbstring`) | Multi-byte string handling for non-ASCII text |
+    | **MB Regex** (`mb_regex_encoding`) | Regex operations on multi-byte strings |
+    | **GD Image Library** (`gd`) | Image processing for logos and watermarks |
+    | **PHP DOM** (`dom` / `DOMDocument`) | HTML parsing for template rendering |
+    | **libxml** (`libxml`) | XML/HTML parsing underlying DOM |
+
+    **How to check:** Open the Fluent PDF settings page. If any item shows red, that extension is missing or disabled.
+
+    **How to fix:** Contact your web hosting provider and ask them to enable the missing PHP extension. On servers you manage yourself:
+
+    ```bash
+    # Example for Ubuntu/Debian with PHP 8.1
+    sudo apt-get install php8.1-mbstring php8.1-gd php8.1-xml
+    sudo systemctl restart php8.1-fpm
+    ```
+
+    <Warning>
+      All five extensions must be enabled for PDF generation to work reliably. A missing extension can cause silent failures or fatal errors.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="PDF generation fails entirely">
+    If clicking a PDF download link produces an error or a blank page, work through these checks in order:
+
+    **1. Check error logs**
+
+    Enable `WP_DEBUG_LOG` in `wp-config.php` and inspect `wp-content/debug.log` after triggering the failure:
+
+    ```php
+    define( 'WP_DEBUG', true );
+    define( 'WP_DEBUG_LOG', true );
+    define( 'WP_DEBUG_DISPLAY', false );
+    ```
+
+    **2. Increase PHP memory limit**
+
+    mPDF (the library used for rendering) is memory-intensive, especially for PDFs with images or many pages. Increase the WordPress memory limit:
+
+    ```php
+    // In wp-config.php
+    define( 'WP_MEMORY_LIMIT', '256M' );
+    ```
+
+    Or set it in `php.ini` / `.htaccess` if your host requires it:
+
+    ```ini
+    memory_limit = 256M
+    ```
+
+    **3. Verify temp directory is writable**
+
+    Fluent PDF writes temporary files to `wp-content/uploads/FLUENT_PDF_TEMPLATES/temp/` and caches rendered PDFs in `wp-content/uploads/FLUENT_PDF_TEMPLATES/pdfCache/`. Both directories must be writable by the web server:
+
+    ```bash
+    ls -la wp-content/uploads/FLUENT_PDF_TEMPLATES/temp/
+    ls -la wp-content/uploads/FLUENT_PDF_TEMPLATES/pdfCache/
+    ```
+
+    **4. Check PHP extension status**
+
+    See the [PHP extension errors](#php-extension-errors-in-system-status) accordion above.
+  </Accordion>
+
+  <Accordion title="Old fluentforms-pdf plugin conflict">
+    Starting with v1.1.0, the Fluent Forms integration is built directly into `fluent-pdf`. The old standalone plugin (`fluentforms-pdf`) is no longer required.
+
+    **Symptoms of a conflict:**
+
+    - An admin notice appears saying *"Fluent Forms PDF (fluentforms-pdf) is no longer needed."*
+    - PDF feeds may appear duplicated or behave unexpectedly.
+
+    **Resolution:**
+
+    1. The notice includes a **Deactivate Now** button — click it to deactivate `fluentforms-pdf`.
+    2. Do **not** delete `fluent-pdf`; that is the current plugin.
+    3. Your PDF feeds and settings are preserved — migration runs automatically on activation.
+
+    <Warning>
+      Both plugins cannot run their Fluent Forms hooks simultaneously. `fluent-pdf` detects whether `fluentforms-pdf` already registered its AJAX actions and skips its own registration if so, but this is only a safety guard during the transition. Deactivate `fluentforms-pdf` as soon as possible.
+    </Warning>
+
+    Settings migration writes to the `_fluent_pdf_settings` option and sets a `_fluent_pdf_migration_completed` flag so it only runs once.
+  </Accordion>
+
+  <Accordion title="RTL text not rendering correctly">
+    Arabic, Hebrew, and other right-to-left scripts require explicit configuration.
+
+    **Steps:**
+
+    1. Go to **Fluent Forms → Add-Ons → Fluent PDF → Global Settings**.
+    2. Set **Language Direction** to **RTL**.
+    3. Set **Font Family** to a font that supports your script:
+       - Arabic: **XB Riyaz** (`xbriyaz`), **Lateef**, or **Bahif Uthman Taha**
+       - Hebrew: **Taamey David CLM** (`taameydavidclm`)
+    4. Save settings and regenerate the PDF.
+
+    <Tip>
+      The Language Direction setting maps to the `language_direction` global option (`ltr` / `rtl`). Per-feed appearance settings inherit from global settings but can override font and direction independently.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Invoice template not appearing in template list">
+    The Invoice template is only available for forms that have payment fields enabled. If you do not see it in the template chooser, the form does not have `has_payment` set to `true`.
+
+    **To enable payments on a form:**
+
+    1. Open the form in the Fluent Forms editor.
+    2. Add a **Payment** field (e.g. Payment Item, Custom Amount, or Stripe/PayPal field).
+    3. Save the form.
+    4. Return to the PDF feed settings — the Invoice template should now appear.
+
+    <Info>
+      This behavior is enforced in `FluentFormsIntegration::getAvailableTemplates()`: the `invoice` template is only added to the list when `$form->has_payment` is truthy.
+    </Info>
+  </Accordion>
+
+  <Accordion title="PDF download link not working for users">
+    There are several reasons a PDF download link may fail for front-end users.
+
+    **Allow Download not enabled**
+
+    The feed-level **Allow Download** setting must be set to **Yes**. Open the PDF feed settings for the form and confirm `allow_download` is enabled.
+
+    **Private links require login**
+
+    The standard `{pdf.download_link}` and `{pdf.download_link.FEED_ID}` shortcodes generate private links. The user must:
+    - Be logged in to WordPress.
+    - Have the `fluentform_entries_viewer` capability, **or** be the same user who submitted the form.
+
+    If you need unauthenticated users to download their PDF, use the **public link** shortcode instead:
+
+    ```
+    {pdf.download_link.public.FEED_ID}
+    ```
+
+    Public links use encrypted, hashed IDs (via `Protector::encrypt`) so the entry ID is not exposed in the URL. No login is required.
+
+    **Nonce expired**
+
+    Private download links include a WordPress nonce. Nonces expire after 12–24 hours by default. If a user saves the link and tries it later, it may fail. Use public links for use-cases where the link needs to remain valid longer.
+  </Accordion>
+
+  <Accordion title="Watermark not appearing on PDF">
+    **Text watermark is invisible**
+
+    Check that **Watermark Opacity** is not set to `0`. The field accepts values between `1` and `100`. A value of `0` renders the watermark completely transparent.
+
+    **Image watermark is not showing**
+
+    The image must be accessible from the server (not just the browser). Fluent PDF fetches the image URL server-side during PDF rendering. Verify:
+
+    - The image URL is publicly accessible (not behind authentication).
+    - The server can make outbound HTTP requests to the URL's domain.
+    - The URL resolves correctly from the server's perspective (localhost URLs will not work on hosted environments).
+
+    You can test server-side accessibility using WP-CLI:
+
+    ```bash
+    wp eval "var_dump( wp_remote_get( 'https://example.com/your-watermark.png' ) );"
+    ```
+
+    A successful response will show HTTP status `200`. Any other result indicates the server cannot reach the image.
+  </Accordion>
+
+</AccordionGroup>

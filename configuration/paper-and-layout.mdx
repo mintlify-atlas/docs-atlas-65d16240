@@ -1,0 +1,152 @@
+---
+title: "Paper size and layout"
+description: "Reference for all supported paper sizes, orientations, and language direction settings in Fluent PDF."
+keywords: ["paper size", "page size", "orientation", "portrait", "landscape", "RTL", "LTR", "A4", "letter", "layout"]
+---
+
+Paper size, orientation, and language direction can be set globally in [Global settings](/configuration/global-settings) and overridden on a per-feed basis in each [PDF feed](/fluent-forms/pdf-feeds).
+
+## Paper sizes
+
+Fluent PDF supports a large range of standard paper sizes. The table below lists every available option.
+
+### ISO A series
+
+Used widely for general printing in most countries (except the US and Canada).
+
+| Key | Dimensions |
+|-----|-----------|
+| `A0` | 841 × 1189 mm |
+| `A1` | 594 × 841 mm |
+| `A2` | 420 × 594 mm |
+| `A3` | 297 × 420 mm |
+| `A4` | 210 × 297 mm *(default)* |
+| `A5` | 148 × 210 mm |
+| `A6` | 105 × 148 mm |
+| `A7` | 74 × 105 mm |
+| `A8` | 52 × 74 mm |
+| `A9` | 37 × 52 mm |
+| `A10` | 26 × 37 mm |
+
+### ISO B series
+
+Larger than the equivalent A series. Commonly used for posters and books.
+
+| Key | Dimensions |
+|-----|-----------|
+| `B0` | 1414 × 1000 mm |
+| `B1` | 1000 × 707 mm |
+| `B2` | 707 × 500 mm |
+| `B3` | 500 × 353 mm |
+| `B4` | 353 × 250 mm |
+| `B5` | 250 × 176 mm |
+| `B6` | 176 × 125 mm |
+| `B7` | 125 × 88 mm |
+| `B8` | 88 × 62 mm |
+| `B9` | 62 × 44 mm |
+| `B10` | 44 × 31 mm |
+
+### ISO C series
+
+Designed for envelopes. A C4 envelope holds an A4 sheet unfolded.
+
+| Key | Dimensions |
+|-----|-----------|
+| `C0` | 1297 × 917 mm |
+| `C1` | 917 × 648 mm |
+| `C2` | 648 × 458 mm |
+| `C3` | 458 × 324 mm |
+| `C4` | 324 × 229 mm |
+| `C5` | 229 × 162 mm |
+| `C6` | 162 × 114 mm |
+| `C7` | 114 × 81 mm |
+| `C8` | 81 × 57 mm |
+| `C9` | 57 × 40 mm |
+| `C10` | 40 × 28 mm |
+
+### RA and SRA series
+
+Raw format paper used in commercial printing, slightly larger than the A series to allow for bleed.
+
+| Key | Dimensions |
+|-----|-----------|
+| `RA0` | 860 × 1220 mm |
+| `RA1` | 610 × 860 mm |
+| `RA2` | 430 × 610 mm |
+| `RA3` | 305 × 430 mm |
+| `RA4` | 215 × 305 mm |
+| `SRA0` | 900 × 1280 mm |
+| `SRA1` | 640 × 900 mm |
+| `SRA2` | 450 × 640 mm |
+| `SRA3` | 320 × 450 mm |
+| `SRA4` | 225 × 320 mm |
+
+### Named sizes
+
+Traditional named formats used primarily in North America and publishing.
+
+| Key | Dimensions | Notes |
+|-----|-----------|-------|
+| `Letter` | 8.5 × 11 in | Standard US letter |
+| `Legal` | 8.5 × 14 in | US legal |
+| `ledger` | 11 × 17 in | Ledger / Tabloid |
+| `Executive` | 7 × 10 in | Executive |
+| `B` | 128 × 198 mm | Book trim size |
+| `A` | 111 × 178 mm | Small book trim size |
+| `DEMY` | 135 × 216 mm | Demy octavo |
+| `ROYAL` | 135 × 216 mm | Royal octavo |
+
+<Note>
+  `ledger` uses a lowercase key. All other keys are uppercase. Make sure to match the casing exactly when setting values programmatically.
+</Note>
+
+## Orientation
+
+| Value | Label | Description |
+|-------|-------|-------------|
+| `P` | Portrait | Taller than wide (default) |
+| `L` | Landscape | Wider than tall |
+
+Portrait is appropriate for most form submissions, invoices, and letters. Use Landscape for wide tables or certificates.
+
+## Language direction
+
+| Value | Label | Use case |
+|-------|-------|---------|
+| `ltr` | LTR | Left-to-right scripts (Latin, Cyrillic, Greek, etc.) |
+| `rtl` | RTL | Right-to-left scripts (Arabic, Hebrew, Syriac, etc.) |
+
+When **RTL** is selected, mPDF reverses the text flow for the entire PDF. Use this setting alongside a compatible font from the [Arabic font group](/configuration/fonts) when rendering Arabic or Hebrew content.
+
+<Tip>
+  If your form collects content in multiple directions (for example, a bilingual form with both English and Arabic fields), configure language direction at the per-feed level rather than globally.
+</Tip>
+
+## Per-feed overrides
+
+Paper size, orientation, and language direction set in [Global settings](/configuration/global-settings) apply to all forms by default. Individual PDF feeds let you override each of these values for a specific form.
+
+To override on a per-feed basis:
+
+1. Go to **Fluent Forms → your form → PDF Feeds**.
+2. Open or create a feed.
+3. Adjust **Paper size**, **Orientation**, or **Language direction** under the feed's settings tab.
+
+Values left blank in a feed fall back to the global defaults.
+
+## Related pages
+
+<CardGroup cols={2}>
+  <Card title="Global settings" icon="gear" href="/configuration/global-settings">
+    Set the site-wide defaults for paper size, orientation, and direction.
+  </Card>
+  <Card title="Font management" icon="font" href="/configuration/fonts">
+    Download fonts required for RTL and non-Latin script rendering.
+  </Card>
+  <Card title="PDF feeds" icon="list" href="/fluent-forms/pdf-feeds">
+    Override paper and layout settings on a per-form basis.
+  </Card>
+  <Card title="Templates" icon="file-code" href="/fluent-forms/templates">
+    Choose a template that suits your chosen paper size and orientation.
+  </Card>
+</CardGroup>

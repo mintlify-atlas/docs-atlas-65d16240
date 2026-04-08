@@ -1,0 +1,123 @@
+---
+title: "PDF feeds"
+description: "Configure per-form PDF generation by creating PDF feeds in Fluent Forms. Each feed defines a template, content, and appearance settings for PDFs generated on submission."
+---
+
+A **PDF feed** is a per-form configuration that tells Fluent PDF how to generate a PDF document when a form is submitted. Each form can have multiple feeds — for example, one for an internal record and one for a customer receipt. Feeds are stored in the `fluentform_form_meta` table under the `_pdf_feeds` meta key.
+
+## Finding PDF feeds
+
+Navigate to your form in the WordPress admin, then go to **Settings → PDF Feeds**. All existing feeds for that form are listed here. You can create, edit, and delete feeds from this screen.
+
+## Creating a feed
+
+<Steps>
+  <Step title="Open PDF Feeds">
+    From the Fluent Forms admin, open the form you want to configure. Click **Settings** in the top navigation, then select **PDF Feeds**.
+  </Step>
+  <Step title="Choose a template">
+    Click **Create New Feed** and select a template:
+
+    - **General** — available for all forms. Renders a custom header, body, and footer.
+    - **Invoice** — only available for forms with payment enabled (`has_payment = true`). Renders a structured receipt layout with order line items and payment summary.
+  </Step>
+  <Step title="Configure and save">
+    Fill in the feed settings (described below), configure the appearance, then click **Save**.
+  </Step>
+</Steps>
+
+## Feed settings
+
+These fields appear in the **Settings** tab of a feed.
+
+<ParamField body="name" type="text" required>
+  The feed name. This is used as the base filename of the generated PDF (sanitized and appended with the submission ID). Supports Fluent Forms smart codes so you can include submission data in the filename — for example, `Invoice {inputs.first_name}`.
+</ParamField>
+
+<ParamField body="template_key" type="dropdown">
+  The template used to render this feed. Options:
+
+  - `general` — General template (always available)
+  - `invoice` — Invoice template (payment forms only)
+
+  Custom templates registered via the `fluentform/pdf_templates` filter also appear here.
+</ParamField>
+
+<ParamField body="header" type="wp-editor">
+  HTML content displayed in the header of every page. Rendered using the WordPress editor. Supports Fluent Forms smart codes and HTML. Defaults to `<h2>PDF Title</h2>`.
+</ParamField>
+
+<ParamField body="body" type="wp-editor">
+  The main PDF content. Rendered using the WordPress editor. Supports all Fluent Forms smart codes including `{all_data}` to output a formatted table of all submission data. Fluent Forms Pro users can also use conditional content blocks in the body.
+
+  Default value: `{all_data}`
+</ParamField>
+
+<ParamField body="footer" type="wp-editor">
+  HTML content displayed in the footer of every page. Supports the following mPDF-specific tokens:
+
+  - `{DATE j-m-Y}` — current date in `j-m-Y` format (any PHP `date()` format string works)
+  - `{PAGENO}` — current page number
+  - `{nbpg}` — total number of pages
+
+  Default value: `<table width="100%"><tr><td width="50%">{DATE j-m-Y}</td><td width="50%" style="text-align: right;">{PAGENO}/{nbpg}</td></tr></table>`
+</ParamField>
+
+<ParamField body="allow_download" type="radio">
+  Controls whether logged-in users can download this PDF via the shortcode download link.
+
+  - `Yes` — the `{pdf.download_link.{feedId}}` shortcode resolves to a working download URL for logged-in users
+  - `No` — the shortcode returns no URL
+
+  <Note>This setting only controls front-end shortcode links. Admins can always download PDFs from the Entries screen regardless of this setting.</Note>
+</ParamField>
+
+## Appearance settings
+
+Each feed has an **Appearance** tab that overrides the global defaults for that specific feed.
+
+| Setting | Description |
+|---|---|
+| `paper_size` | Paper dimensions (e.g. A4, Letter, Legal). See [paper and layout](/configuration/paper-and-layout) for all options. |
+| `orientation` | `Portrait` or `Landscape`. |
+| `font_family` | Font used for body text. Only fonts that have been downloaded appear here. See [fonts](/configuration/fonts). |
+| `font_size` | Base font size in pixels. |
+| `font_color` | Hex color for body text. Default `#323232`. |
+| `heading_color` | Hex color for `h1`–`h6` elements. Default `#000000`. |
+| `accent_color` | Hex color used for borders, horizontal rules, and table borders. Default `#989797`. |
+| `watermark_image` | URL of an image to render as a watermark on each page. |
+| `watermark_text` | Plain text to render as a watermark on each page. |
+| `watermark_opacity` | Watermark opacity as an integer between 1 and 100. |
+| `watermark_img_behind` | When checked, the watermark image is rendered behind the page content rather than in front. |
+| `security_pass` | Password-protect the PDF. If set, the PDF requires this password to open. |
+
+<Tip>
+  Global appearance defaults are configured under **Fluent Forms → Add-Ons → Fluent PDF**. Feed-level appearance settings override global defaults for that feed only.
+</Tip>
+
+## Feed shortcode
+
+Every saved feed displays a read-only **Shortcode** field in its settings:
+
+```
+{pdf.download_link.{feedId}}
+```
+
+Copy this shortcode and paste it into a form confirmation message or notification email body to give users a download link for the specific feed. See [PDF shortcodes](/fluent-forms/shortcodes) for full details on shortcode variants and authentication requirements.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="PDF templates" icon="file" href="/fluent-forms/templates">
+    Learn about the General and Invoice templates and how to register custom ones.
+  </Card>
+  <Card title="PDF shortcodes" icon="brackets-curly" href="/fluent-forms/shortcodes">
+    Embed PDF download links in confirmation messages and emails.
+  </Card>
+  <Card title="Email attachments" icon="envelope" href="/fluent-forms/email-attachments">
+    Attach generated PDFs to notification emails.
+  </Card>
+  <Card title="Global settings" icon="sliders" href="/configuration/global-settings">
+    Set default appearance values that all feeds inherit.
+  </Card>
+</CardGroup>
